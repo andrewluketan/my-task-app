@@ -5,26 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omni-Task Manager</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- (9) WYSIWYG Editor: Quill.js (No API Key Required) -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-
     <style>
         :root { --milwaukee-red: #da291c; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; color: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; }
         .container { max-width: 900px; margin: auto; }
-        .category-card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 25px; margin-bottom: 30px; border-top: 6px solid var(--milwaukee-red); }
-        .cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .timestamp { font-size: 0.75rem; color: #888; }
-        .subtask-list { margin-left: 20px; border-left: 2px solid #eee; padding-left: 15px; margin-top: 5px; }
-        .subtask-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; background: #fff; }
-        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; transition: 0.2s; }
+        .category-card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 30px; border-top: 6px solid var(--milwaukee-red); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .subtask-list { margin-left: 20px; border-left: 2px solid #eee; padding-left: 15px; }
+        .subtask-item { display: flex; align-items: center; gap: 10px; padding: 6px; border-bottom: 1px solid #f0f0f0; }
+        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; }
         .btn-main { background: var(--milwaukee-red); color: white; }
-        .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; border-radius: 4px; border: 1px solid #ddd; }
-        .editor-container { background: #fff; height: 150px; }
-        .task-text { flex: 1; font-size: 14px; }
-        .completed { text-decoration: line-through; color: #aaa; }
+        .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; border: 1px solid #ddd; }
+        .editor-container { background: #fff; height: 120px; }
     </style>
 </head>
 <body>
@@ -38,7 +31,6 @@
 </div>
 
 <script>
-    // --- CONFIGURATION ---
     const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co'; 
     const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; 
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -47,134 +39,68 @@
 
     async function addCategory() {
         const name = prompt("Enter Category Name:");
-        if (!name) return;
-        await _supabase.from('categories').insert([{ name }]);
+        if (name) await _supabase.from('categories').insert([{ name }]);
         refreshUI();
-    }
-
-    async function editCategory(id, oldName) {
-        const newName = prompt("Edit Category Name:", oldName);
-        if (newName) await _supabase.from('categories').update({ name: newName }).eq('id', id);
-        refreshUI();
-    }
-
-    async function deleteCategory(id) {
-        if (confirm("Delete this entire project category?")) {
-            await _supabase.from('categories').delete().eq('id', id);
-            refreshUI();
-        }
     }
 
     async function addSubTask(catId, parentId = null) {
         const text = prompt("Task description:");
         if (!text) return;
-        await _supabase.from('subtasks').insert([{ category_id: catId, parent_id: parentId, task_text: text }]);
+        await _supabase.from('subtasks').insert([{ 
+            category_id: Number(catId), 
+            parent_id: parentId ? Number(parentId) : null, 
+            task_text: text 
+        }]);
         refreshUI();
     }
 
-    async function toggleComplete(id, status) {
-        await _supabase.from('subtasks').update({ is_completed: !status }).eq('id', id);
-        refreshUI();
-    }
-
-    async function deleteSubTask(id) {
-        if (confirm("Delete this task?")) {
-            await _supabase.from('subtasks').delete().eq('id', id);
-            refreshUI();
-        }
-    }
-
-    async function promoteTask(taskId, currentParentId) {
-        if (!currentParentId) return; 
-        const { data: parent } = await _supabase.from('subtasks').select('parent_id').eq('id', currentParentId).single();
-        await _supabase.from('subtasks').update({ parent_id: parent.parent_id }).eq('id', taskId);
-        refreshUI();
-    }
-
-    async function saveNotes(catId) {
-        const content = editors[catId].root.innerHTML;
-        await _supabase.from('categories').update({ notes: content }).eq('id', catId);
-        alert("Project notes saved.");
-    }
-
-    // --- CORE RENDERING ---
     async function refreshUI() {
-        console.log("Refreshing UI...");
         const { data: cats, error } = await _supabase.from('categories').select('*').order('created_at', { ascending: false });
-        if (error) return;
+        if (error) { alert("Error loading categories: " + error.message); return; }
 
         const root = document.getElementById('app-root');
         root.innerHTML = '';
-        editors = {}; 
 
         for (const cat of cats) {
             const card = document.createElement('div');
             card.className = 'category-card';
-            const dateStr = new Date(cat.created_at).toLocaleDateString('en-SG', { dateStyle: 'long' });
-            
             card.innerHTML = `
-                <div class="cat-header">
-                    <div>
-                        <h2 style="margin:0; cursor:pointer;" onclick="editCategory(${cat.id}, '${cat.name}')">${cat.name} ✎</h2>
-                        <span class="timestamp">Started: ${dateStr}</span>
-                    </div>
-                    <button class="btn-small" onclick="deleteCategory(${cat.id})">Delete Category</button>
-                </div>
-                <div class="note-wrapper">
-                    <div id="editor-${cat.id}" class="editor-container">${cat.notes || ''}</div>
-                    <button class="btn btn-small" style="margin-top:10px; background:#fff;" onclick="saveNotes(${cat.id})">Save Project Notes</button>
-                </div>
-                <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
-                <div id="tasks-for-${cat.id}">Loading...</div>
+                <h2>${cat.name}</h2>
+                <div id="editor-${cat.id}" class="editor-container">${cat.notes || ''}</div>
+                <button class="btn btn-small" onclick="saveNotes(${cat.id})">Save Notes</button>
+                <hr style="margin:20px 0;">
+                <div id="tasks-for-${cat.id}">Checking for tasks...</div>
                 <button class="btn btn-main" style="margin-top:15px; font-size:12px;" onclick="addSubTask(${cat.id})">+ Add Main Task</button>
             `;
             root.appendChild(card);
             
-            editors[cat.id] = new Quill(`#editor-${cat.id}`, {
-                theme: 'snow',
-                modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }
-            });
+            editors[cat.id] = new Quill(`#editor-${cat.id}`, { theme: 'snow', modules: { toolbar: false } });
 
-            await renderTree(cat.id, null, `tasks-for-${cat.id}`);
+            // Trigger the task load
+            loadTasks(cat.id);
         }
     }
 
-    async function renderTree(catId, parentId, containerId) {
-        const { data: tasks } = await _supabase.from('subtasks')
+    async function loadTasks(catId) {
+        const { data: tasks, error } = await _supabase.from('subtasks')
             .select('*')
-            .eq('category_id', catId)
-            .eq('parent_id', parentId)
+            .eq('category_id', Number(catId))
+            .is('parent_id', null)
             .order('created_at', { ascending: true });
 
-        const container = document.getElementById(containerId);
-        if (!container) return;
+        const container = document.getElementById(`tasks-for-${catId}`);
+        if (error) {
+            container.innerHTML = `<span style="color:red">Error: ${error.message}</span>`;
+            return;
+        }
 
-        if (parentId === null) container.innerHTML = ''; 
-
-        if (tasks && tasks.length > 0) {
-            for (const task of tasks) {
-                const item = document.createElement('div');
-                item.className = 'subtask-item';
-                item.innerHTML = `
-                    <input type="checkbox" ${task.is_completed ? 'checked' : ''} onchange="toggleComplete(${task.id}, ${task.is_completed})">
-                    <span class="task-text ${task.is_completed ? 'completed' : ''}">${task.task_text}</span>
-                    <button class="btn-small" onclick="addSubTask(${catId}, ${task.id})">+ Sub</button>
-                    <button class="btn-small" onclick="promoteTask(${task.id}, ${task.parent_id})">↑ Up</button>
-                    <button class="btn-small" style="color:red" onclick="deleteSubTask(${task.id})">×</button>
-                `;
-                const subContainer = document.createElement('div');
-                subContainer.className = 'subtask-list';
-                subContainer.id = `children-of-${task.id}`;
-                container.appendChild(item);
-                container.appendChild(subContainer);
-                await renderTree(catId, task.id, subContainer.id);
-            }
-        } else if (parentId === null) {
-            container.innerHTML = '<p style="font-size:12px; color:#aaa;">No tasks yet.</p>';
+        if (tasks.length === 0) {
+            container.innerHTML = '<p style="color:#aaa; font-size:12px;">No tasks found in database.</p>';
+        } else {
+            container.innerHTML = tasks.map(t => `<div class="subtask-item"><span>${t.task_text}</span></div>`).join('');
         }
     }
 
-    _supabase.channel('db-changes').on('postgres_changes', { event: '*', schema: 'public' }, () => refreshUI()).subscribe();
     refreshUI();
 </script>
 </body>
