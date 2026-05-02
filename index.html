@@ -5,21 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omni-Task Manager</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- (9) WYSIWYG Editor for Rich Text Notes -->
-    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
     <style>
         :root { --milwaukee-red: #da291c; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; color: #333; }
         .container { max-width: 900px; margin: auto; }
         .category-card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 25px; margin-bottom: 30px; border-top: 6px solid var(--milwaukee-red); }
-        .cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .timestamp { font-size: 0.75rem; color: #888; }
-        .subtask-list { margin-left: 20px; border-left: 2px solid #eee; padding-left: 15px; }
-        .subtask-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #f0f0f0; }
-        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; transition: 0.2s; }
-        .btn-main { background: var(--milwaukee-red); color: white; }
-        .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; }
-        .note-area { margin-top: 20px; background: #fffdf5; border: 1px solid #ffeeba; border-radius: 8px; padding: 10px; }
+        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; background: var(--milwaukee-red); color: white; }
+        .empty-state { text-align: center; margin-top: 50px; color: #888; }
     </style>
 </head>
 <body>
@@ -27,7 +19,7 @@
 <div class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
         <h1>Strategic Project Manager</h1>
-        <button class="btn btn-main" onclick="addCategory()">+ New Category</button>
+        <button class="btn" onclick="addCategory()">+ New Category</button>
     </div>
     <div id="app-root"></div>
 </div>
@@ -35,116 +27,53 @@
 <script>
     // --- CONFIGURATION ---
     const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l';
+    const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY_HERE'; // Ensure this is your public anon key
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // --- (1, 2) Category Logic ---
+    // --- (1) Add Category with Error Feedback ---
     async function addCategory() {
         const name = prompt("Enter Category Name:");
-        if (name) await _supabase.from('Categories').insert([{ name }]);
-        refreshUI();
-    }
+        if (!name) return;
 
-    async function editCategory(id, oldName) {
-        const newName = prompt("Edit Category Name:", oldName);
-        if (newName) await _supabase.from('Categories').update({ name: newName }).eq('id', id);
-        refreshUI();
-    }
-
-    // --- (3, 8) Sub-task Logic (Promotion/Demotion/Ordering) ---
-    async function addSubTask(catId, parentId = null) {
-        const text = prompt("Task description:");
-        if (!text) return;
-        await _supabase.from('SubTasks').insert([{ 
-            category_id: catId, 
-            parent_id: parentId, 
-            task_text: text 
-        }]);
-        refreshUI();
-    }
-
-    // Promotion: Move task to its grandparent (one level up)
-    async function promoteTask(taskId, currentParentId) {
-        if (!currentParentId) return; // Already at top level
-        const { data: parent } = await _supabase.from('SubTasks').select('parent_id').eq('id', currentParentId).single();
-        await _supabase.from('SubTasks').update({ parent_id: parent.parent_id }).eq('id', taskId);
-        refreshUI();
-    }
-
-    // --- (9) WYSIWYG Note Saving ---
-    async function saveNotes(catId) {
-        const content = tinymce.get(`editor-${catId}`).getContent();
-        await _supabase.from('Categories').update({ notes: content }).eq('id', catId);
-        alert("Project notes saved.");
-    }
-
-    // --- UI Rendering ---
-    async function refreshUI() {
-        const { data: cats } = await _supabase.from('Categories').select('*').order('created_at', { ascending: false });
-        const root = document.getElementById('app-root');
-        root.innerHTML = '';
-
-        for (const cat of cats) {
-            const card = document.createElement('div');
-            card.className = 'category-card';
-            // (7) Created Timestamp
-            const dateStr = new Date(cat.created_at).toLocaleDateString('en-SG', { dateStyle: 'long' });
-            
-            card.innerHTML = `
-                <div class="cat-header">
-                    <div>
-                        <h2 style="margin:0; cursor:pointer;" onclick="editCategory(${cat.id}, '${cat.name}')">${cat.name} ✎</h2>
-                        <span class="timestamp">Started: ${dateStr}</span>
-                    </div>
-                    <button class="btn btn-small" onclick="deleteCategory(${cat.id})">Delete Category</button>
-                </div>
-                <div class="note-area">
-                    <textarea id="editor-${cat.id}">${cat.notes || 'Project notes here...'}</textarea>
-                    <button class="btn btn-small" style="margin-top:5px" onclick="saveNotes(${cat.id})">Save Notes</button>
-                </div>
-                <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
-                <div id="tasks-for-${cat.id}"></div>
-                <button class="btn btn-main" style="margin-top:15px; font-size:12px;" onclick="addSubTask(${cat.id})">+ Add Task</button>
-            `;
-            root.appendChild(card);
-            tinymce.init({ selector: `#editor-${cat.id}`, menubar: false, height: 150 });
-            renderTree(cat.id, null, `tasks-for-${cat.id}`);
+        console.log("Attempting to save category:", name);
+        const { data, error } = await _supabase.from('Categories').insert([{ name }]).select();
+        
+        if (error) {
+            alert("Database Error: " + error.message);
+            console.error("Insert Error:", error);
+        } else {
+            console.log("Successfully saved:", data);
+            refreshUI();
         }
     }
 
-    async function renderTree(catId, parentId, containerId) {
-        const { data: tasks } = await _supabase.from('SubTasks')
-            .select('*')
-            .eq('category_id', catId)
-            .eq('parent_id', parentId)
-            .order('created_at', { ascending: true });
+    // --- (7) Load and Render ---
+    async function refreshUI() {
+        console.log("Refreshing UI...");
+        const { data: cats, error } = await _supabase.from('Categories').select('*').order('created_at', { ascending: false });
+        
+        if (error) {
+            console.error("Fetch Error:", error);
+            return;
+        }
 
-        const container = document.getElementById(containerId);
-        tasks.forEach(task => {
-            const item = document.createElement('div');
-            item.className = 'subtask-item';
-            item.innerHTML = `
-                <input type="checkbox" ${task.is_completed ? 'checked' : ''}>
-                <span style="flex:1">${task.task_text}</span>
-                <button class="btn-small" onclick="addSubTask(${catId}, ${task.id})">Sub-task</button>
-                <button class="btn-small" onclick="promoteTask(${task.id}, ${task.parent_id})">↑ Promote</button>
-                <!-- (5) Due Date Display -->
-                <span class="timestamp">${task.due_date ? 'Due: ' + new Date(task.due_date).toLocaleDateString() : ''}</span>
-            `;
-            const subContainer = document.createElement('div');
-            subContainer.className = 'subtask-list';
-            subContainer.id = `children-of-${task.id}`;
-            container.appendChild(item);
-            container.appendChild(subContainer);
-            renderTree(catId, task.id, subContainer.id);
-        });
+        const root = document.getElementById('app-root');
+        if (!cats || cats.length === 0) {
+            root.innerHTML = '<div class="empty-state"><h3>No projects yet.</h3><p>Click "+ New Category" to organize your workshop or business tasks.</p></div>';
+            return;
+        }
+
+        root.innerHTML = cats.map(cat => `
+            <div class="category-card">
+                <h2>${cat.name}</h2>
+                <p style="font-size: 0.8rem; color: #888;">Started: ${new Date(cat.created_at).toLocaleDateString()}</p>
+                <hr>
+                <p>Tasks will appear here once added.</p>
+            </div>
+        `).join('');
     }
 
-    // Realtime Sync
-    _supabase.channel('custom-all-channel')
-        .on('postgres_changes', { event: '*', schema: 'public' }, () => refreshUI())
-        .subscribe();
-
+    // Initial load
     refreshUI();
 </script>
 </body>
