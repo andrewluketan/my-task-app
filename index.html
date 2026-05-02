@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Omni-Task Manager | Real-Time</title>
+    <title>Omni-Task Manager | Persistent Order</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
@@ -14,13 +14,14 @@
         body { font-family: 'Inter', sans-serif; background: var(--bg); padding: 20px; color: #1f2937; }
         .container { max-width: 900px; margin: auto; }
         .category-card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .subtask-list { min-height: 15px; margin-left: 28px; border-left: 1px solid #e5e7eb; padding-left: 8px; margin-top: 4px; }
-        .subtask-item { display: flex; align-items: center; gap: 12px; padding: 8px; background: white; border-radius: 4px; }
+        .subtask-list { min-height: 20px; margin-left: 28px; border-left: 1px solid #e5e7eb; padding-left: 8px; margin-top: 4px; transition: background 0.2s; }
+        .subtask-item { display: flex; align-items: center; gap: 12px; padding: 8px; background: white; border-radius: 4px; margin-bottom: 2px; }
         .drag-handle { cursor: grab; color: #9ca3af; font-size: 18px; padding: 0 4px; }
         .btn { cursor: pointer; padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; background: white; }
         .btn-main { background: var(--milwaukee-red); color: white; border: none; }
         .task-text { flex: 1; font-size: 14px; }
         .completed { text-decoration: line-through; color: #9ca3af; }
+        .sortable-drag { background: #fff !important; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
 <body>
@@ -40,17 +41,6 @@
 
     let editors = {}; 
 
-    // --- Optimized Real-Time Subscription ---
-    // This listens for any change and refreshes the UI automatically
-    _supabase
-        .channel('schema-db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'subtasks' }, (payload) => {
-            console.log('Change received!', payload);
-            // We only refresh if the change didn't come from our own drag-and-drop to prevent "jumping"
-            if (payload.eventType !== 'UPDATE') refreshUI(); 
-        })
-        .subscribe();
-
     async function addCategory() {
         const name = prompt("Category Name:");
         if (name) { await _supabase.from('categories').insert([{ name }]); refreshUI(); }
@@ -62,7 +52,8 @@
         await _supabase.from('subtasks').insert([{ 
             category_id: Number(catId), 
             parent_id: parentId ? Number(parentId) : null, 
-            task_text: text 
+            task_text: text,
+            position: 999 // Add to the end
         }]);
         refreshUI();
     }
@@ -75,19 +66,30 @@
             fallbackOnBody: true,
             swapThreshold: 0.65,
             onEnd: async (evt) => {
-                const taskId = evt.item.getAttribute('data-id');
-                const newParentId = evt.to.getAttribute('data-parent-id');
+                const newParentIdStr = evt.to.getAttribute('data-parent-id');
+                const newParentId = newParentIdStr === "null" ? null : Number(newParentIdStr);
                 
-                // OPTIMISTIC UPDATE: We don't refresh the UI here because 
-                // Sortable has already physically moved the element in the DOM.
-                const { error } = await _supabase.from('subtasks').update({ 
-                    parent_id: newParentId === "null" ? null : Number(newParentId)
-                }).eq('id', Number(taskId));
+                // 1. Get all sibling elements in the new container
+                const siblings = Array.from(evt.to.children).filter(child => child.classList.contains('subtask-item'));
+                
+                // 2. Prepare bulk update for positions
+                const updates = siblings.map((child, index) => {
+                    const id = Number(child.getAttribute('data-id'));
+                    const data = { id, position: index };
+                    // Only update the parent_id for the item that was actually moved
+                    if (id === Number(evt.item.getAttribute('data-id'))) {
+                        data.parent_id = newParentId;
+                    }
+                    return data;
+                });
 
-                if (error) {
-                    console.error("Database sync failed:", error);
-                    refreshUI(); // Revert to database state if there's an error
+                // 3. Update database
+                for (const update of updates) {
+                    await _supabase.from('subtasks')
+                        .update({ position: update.position, parent_id: update.parent_id })
+                        .eq('id', update.id);
                 }
+                console.log("Positions and Parent updated.");
             }
         });
     }
@@ -105,7 +107,7 @@
                     <h3>${cat.name}</h3>
                     <button class="btn" onclick="deleteCategory(${cat.id})">Delete</button>
                 </div>
-                <div id="editor-${cat.id}" style="height:100px; margin-bottom:10px;">${cat.notes || ''}</div>
+                <div id="editor-${cat.id}" style="height:80px; margin-bottom:10px; border:1px solid #ddd;">${cat.notes || ''}</div>
                 <div id="tasks-for-${cat.id}" class="subtask-list" data-parent-id="null"></div>
                 <button class="btn btn-main" style="margin-top:12px; width:100%" onclick="addSubTask(${cat.id})">+ Add Task</button>
             `;
@@ -116,10 +118,12 @@
     }
 
     async function renderTree(catId, parentId, containerId) {
+        // Fetch tasks ordered by position
         const { data: tasks } = await _supabase.from('subtasks')
             .select('*')
             .eq('category_id', Number(catId))
             .filter('parent_id', parentId === null ? 'is' : 'eq', parentId)
+            .order('position', { ascending: true }) 
             .order('created_at', { ascending: true });
 
         const container = document.getElementById(containerId);
@@ -132,7 +136,7 @@
             item.innerHTML = `
                 <div class="drag-handle">⋮⋮</div>
                 <span class="task-text ${task.is_completed ? 'completed' : ''}">${task.task_text}</span>
-                <button class="btn" onclick="addSubTask(${catId}, ${task.id})">+ Sub</button>
+                <button class="btn" onclick="addSubTask(${catId}, task.id)">+ Sub</button>
             `;
             
             const subContainer = document.createElement('div');
