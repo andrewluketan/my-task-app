@@ -3,65 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strategic Task Manager | Pro UX</title>
+    <title>Strategic Task Manager | Advanced Scheduling</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     <style>
-        :root { --sidebar-bg: #f3f4f6; --main-blue: #4b69ff; --border: #e5e7eb; }
+        :root { --sidebar-bg: #f3f4f6; --main-blue: #4b69ff; --border: #e5e7eb; --text: #444; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; display: flex; height: 100vh; background: white; overflow: hidden; }
 
-        /* Columns */
+        /* Layout Columns */
         #sidebar { width: 280px; min-width: 150px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
         #main-content { width: 350px; min-width: 300px; display: flex; flex-direction: column; background: var(--main-blue); color: white; border-right: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
-        #detail-pane { flex: 1; min-width: 350px; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; }
+        #detail-pane { flex: 1; min-width: 400px; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; position: relative; }
 
         .resizer { width: 6px; cursor: col-resize; background: transparent; transition: background 0.2s; flex-shrink: 0; z-index: 10; }
         .resizer:hover { background: rgba(75, 105, 255, 0.3); }
 
-        /* Task Rows & Inline Editing */
+        /* Task Components */
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
         #task-items-container { flex: 1; padding: 10px 25px; overflow-y: auto; }
-        
-        .task-row { 
-            background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; 
-            border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: pointer; 
-        }
-
-        /* UPDATED: Text box width restricted to content */
-        .editable-text { 
-            width: fit-content; 
-            min-width: 20px;
-            max-width: 80%;
-            outline: none; 
-            border: 1px solid transparent; 
-            padding: 2px 6px; 
-            border-radius: 2px; 
-            transition: 0.2s;
-            cursor: text;
-        }
-        .editable-text:focus { border-color: var(--main-blue); background: #f0f4ff; color: #000; }
-        
+        .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
+        .editable-text { width: fit-content; min-width: 20px; outline: none; padding: 2px 6px; border-radius: 2px; }
 
-        /* Detail Pane Items */
+        /* Detail Pane Styling */
         .detail-header { padding: 25px 30px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px; }
         .detail-scroll-area { flex: 1; overflow-y: auto; padding: 25px 30px; }
         .detail-section { background: white; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px; padding: 4px 0; }
-        .detail-item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; font-size: 14px; color: #444; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
         
-        .substep-row { display: flex; align-items: center; gap: 12px; padding: 8px 20px; border-bottom: 1px solid #f0f0f0; background: white; cursor: pointer; }
+        /* Dropdown Trigger Styling */
+        .detail-item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; font-size: 14px; color: var(--text); border-bottom: 1px solid #f3f4f6; cursor: pointer; position: relative; }
+        .detail-item:last-child { border-bottom: none; }
+        .detail-item:hover { background: #f9fafb; }
+        .date-display { margin-left: auto; color: var(--main-blue); font-weight: 500; font-size: 12px; }
+
+        /* MS To-Do Style Popover Menu */
+        .datepicker-menu { 
+            position: absolute; top: 100%; left: 10px; width: 280px; background: white; 
+            border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            display: none; z-index: 100; padding: 8px 0; margin-top: 5px;
+        }
+        .picker-option { display: flex; align-items: center; padding: 10px 20px; font-size: 14px; color: #333; transition: 0.2s; }
+        .picker-option:hover { background: #f3f4f6; }
+        .picker-option span:first-child { margin-right: 15px; font-size: 16px; width: 20px; text-align: center; }
+        .picker-option .opt-time { margin-left: auto; color: #888; font-size: 12px; }
+        .picker-divider { height: 1px; background: #eee; margin: 8px 0; }
+
+        #manual-picker-container { display: none; padding: 10px 20px; border-top: 1px solid #eee; background: #fff; }
+        .manual-input { border: 1px solid #ddd; padding: 5px; border-radius: 4px; width: 100%; font-family: inherit; margin-top: 5px; }
 
         #editor-wrapper { background: white; border: 1px solid var(--border); border-radius: 4px; margin-top: 10px; }
         #notes-editor { height: 150px; border: none; }
-
         .white-input { width: 100%; padding: 14px 16px; background: white; border: none; color: #333; font-size: 14px; outline: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); box-sizing: border-box; }
-        .drag-handle { cursor: grab; color: #ccc; font-size: 18px; }
-        .delete-btn { border:none; background:none; cursor:pointer; margin-left: auto; color: #ccc; }
-        .delete-btn:hover { color: red; }
     </style>
 </head>
 <body>
@@ -77,9 +73,7 @@
     <div id="main-content">
         <div id="task-list-header">Tasks</div>
         <div id="task-items-container" data-parent-id="null"></div>
-        <div id="add-task-footer">
-            <input type="text" class="white-input" id="new-task-input" placeholder="+ Add a task" onkeypress="handleNewTask(event)">
-        </div>
+        <div id="add-task-footer"><input type="text" class="white-input" id="new-task-input" placeholder="+ Add a task" onkeypress="handleNewTask(event)"></div>
     </div>
 
     <div class="resizer" id="resizer2"></div>
@@ -88,20 +82,47 @@
         <div class="detail-header">
             <div class="circle-check" id="detail-check"></div>
             <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;" onblur="updateTaskTextFromInline(currentTaskId, this)"></div>
-            <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px;">✕</button>
+            <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px; margin-left: auto;">✕</button>
         </div>
         
         <div class="detail-scroll-area">
+            <div class="detail-section"><div id="sub-steps-list"></div><div class="detail-item" style="color:var(--main-blue); font-weight:600;" onclick="promptAddStep()">+ Add step</div></div>
+
+            <!-- Enhanced Scheduling Section -->
             <div class="detail-section">
-                <div id="sub-steps-list"></div>
-                <div class="detail-item" style="color:var(--main-blue); font-weight:600;" onclick="promptAddStep()">+ Add step</div>
+                <!-- Remind Me Dropdown -->
+                <div class="detail-item" onclick="togglePicker('remind-menu')">
+                    <span>⏰</span> Remind me <span id="remind-val" class="date-display"></span>
+                    <div id="remind-menu" class="datepicker-menu">
+                        <div class="picker-option" onclick="setQuickDate('remind', 'today')"><span>🕒</span> Later today <span class="opt-time">4:00 pm</span></div>
+                        <div class="picker-option" onclick="setQuickDate('remind', 'tomorrow')"><span>➡</span> Tomorrow <span class="opt-time" id="remind-tomorrow-label"></span></div>
+                        <div class="picker-option" onclick="setQuickDate('remind', 'nextweek')"><span>⏭</span> Next week <span class="opt-time" id="remind-nextweek-label"></span></div>
+                        <div class="picker-divider"></div>
+                        <div class="picker-option" onclick="showManual('remind')"><span>📅</span> Pick a date & time</div>
+                        <div id="manual-remind" class="manual-picker-container" style="display:none; padding:10px;">
+                            <input type="datetime-local" class="manual-input" onchange="updateTaskField('remind_at', this.value); hideMenus();">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Due Date Dropdown -->
+                <div class="detail-item" onclick="togglePicker('due-menu')">
+                    <span>📅</span> Add due date <span id="due-val" class="date-display"></span>
+                    <div id="due-menu" class="datepicker-menu">
+                        <div class="picker-option" onclick="setQuickDate('due', 'today')"><span>🕒</span> Today <span class="opt-time">6:00 pm</span></div>
+                        <div class="picker-option" onclick="setQuickDate('due', 'tomorrow')"><span>➡</span> Tomorrow <span class="opt-time" id="due-tomorrow-label"></span></div>
+                        <div class="picker-option" onclick="setQuickDate('due', 'nextweek')"><span>⏭</span> Next week <span class="opt-time" id="due-nextweek-label"></span></div>
+                        <div class="picker-divider"></div>
+                        <div class="picker-option" onclick="showManual('due')"><span>📅</span> Pick a date</div>
+                        <div id="manual-due" class="manual-picker-container" style="display:none; padding:10px;">
+                            <input type="date" class="manual-input" onchange="updateTaskField('due_at', this.value); hideMenus();">
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="detail-section">
-                <div class="detail-item">⏰ Remind me: <input type="datetime-local" id="remind-at" onchange="updateTaskField('remind_at', this.value)"></div>
-                <div class="detail-item">📅 Due date: <input type="date" id="due-at" onchange="updateTaskField('due_at', this.value)"></div>
-            </div>
+
             <div id="editor-wrapper"><div id="notes-editor"></div></div>
-            <button onclick="saveNotes()" style="margin-top:10px; cursor:pointer; padding:5px 10px; background:white; border:1px solid #ccc; border-radius:4px;">Save Notes</button>
+            <button onclick="saveNotes()" style="margin-top:15px; width:100%; cursor:pointer; padding:10px; background:white; border:1px solid #ddd; border-radius:4px; font-weight:600;">Save Notes</button>
         </div>
     </div>
 
@@ -112,6 +133,62 @@
 
     let currentCategoryId = null, currentTaskId = null, quill = null;
 
+    // --- Dynamic Date Calculations ---
+    function getNextWeek() {
+        let d = new Date();
+        d.setDate(d.getDate() + (7 - d.getDay())); // Next Sunday
+        d.setHours(9, 0, 0, 0);
+        return d;
+    }
+
+    function updateMenuLabels() {
+        const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+        const nextWeek = getNextWeek();
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        
+        const tomStr = `${days[tomorrow.getDay()]}, 9:00 am`;
+        const nextStr = `${days[nextWeek.getDay()]}, 9:00 am`;
+
+        document.getElementById('remind-tomorrow-label').innerText = tomStr;
+        document.getElementById('due-tomorrow-label').innerText = tomStr;
+        document.getElementById('remind-nextweek-label').innerText = nextStr;
+        document.getElementById('due-nextweek-label').innerText = nextStr;
+    }
+
+    function togglePicker(id) {
+        event.stopPropagation();
+        hideMenus(id);
+        const menu = document.getElementById(id);
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function hideMenus(exceptId = null) {
+        document.querySelectorAll('.datepicker-menu').forEach(m => {
+            if (m.id !== exceptId) m.style.display = 'none';
+        });
+    }
+
+    function showManual(type) {
+        event.stopPropagation();
+        document.getElementById(`manual-${type}`).style.display = 'block';
+    }
+
+    async function setQuickDate(type, timeline) {
+        event.stopPropagation();
+        let date = new Date();
+        if (timeline === 'today') { date.setHours(16, 0, 0, 0); }
+        else if (timeline === 'tomorrow') { date.setDate(date.getDate() + 1); date.setHours(9, 0, 0, 0); }
+        else if (timeline === 'nextweek') { date = getNextWeek(); }
+
+        const iso = date.toISOString().slice(0, 16);
+        const dbField = type === 'remind' ? 'remind_at' : 'due_at';
+        await updateTaskField(dbField, iso);
+        hideMenus();
+    }
+
+    document.addEventListener('click', () => hideMenus());
+
+    // --- Core Logic ---
     async function updateTaskTextFromInline(id, element) {
         const newText = element.innerText.trim();
         if (!newText) return refreshTasks();
@@ -123,15 +200,10 @@
         new Sortable(el, {
             group: 'nested-tasks', animation: 150, handle: '.drag-handle',
             onEnd: async (evt) => {
-                const taskId = evt.item.getAttribute('data-id');
-                const newParentId = evt.to.getAttribute('data-parent-id');
                 const siblings = Array.from(evt.to.children);
                 for (let i = 0; i < siblings.length; i++) {
                     const sid = siblings[i].getAttribute('data-id');
-                    await _supabase.from('subtasks').update({ 
-                        position: i, 
-                        parent_id: sid == taskId ? (newParentId === "null" ? null : Number(newParentId)) : undefined 
-                    }).eq('id', sid);
+                    await _supabase.from('subtasks').update({ position: i, parent_id: evt.to.getAttribute('data-parent-id') === "null" ? null : Number(evt.to.getAttribute('data-parent-id')) }).eq('id', sid);
                 }
             }
         });
@@ -144,15 +216,13 @@
         container.innerHTML = data.map(t => `
             <div class="task-row" data-id="${t.id}" onclick="handleRowClick(event, ${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">
                 <div class="drag-handle">⋮⋮</div>
-                <div class="circle-check ${t.is_completed ? 'checked' : ''}" onclick="toggleCheck(${t.id}, ${t.is_completed}, event)"></div>
-                <div class="editable-text" contenteditable="true" onblur="updateTaskTextFromInline(${t.id}, this)" onkeypress="if(event.key==='Enter'){this.blur(); return false;}" onclick="event.stopPropagation()">${t.task_text}</div>
-                <button class="delete-btn" onclick="deleteTask(${t.id}, event)">×</button>
+                <div class="circle-check ${t.is_completed ? 'checked' : ''}"></div>
+                <div class="editable-text" contenteditable="true" onblur="updateTaskTextFromInline(${t.id}, this)">${t.task_text}</div>
             </div>
         `).join('');
         initSortable(container);
     }
 
-    // Logic to distinguish between editing text and selecting the row
     function handleRowClick(event, id, title) {
         if (!event.target.classList.contains('editable-text') && !event.target.classList.contains('circle-check')) {
             openDetails(id, title);
@@ -165,8 +235,8 @@
         document.getElementById('detail-pane').style.display = 'flex';
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if (quill) quill.root.innerHTML = data.notes || '';
-        document.getElementById('remind-at').value = data.remind_at ? data.remind_at.slice(0, 16) : '';
-        document.getElementById('due-at').value = data.due_at || '';
+        document.getElementById('remind-val').innerText = data.remind_at ? new Date(data.remind_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+        document.getElementById('due-val').innerText = data.due_at ? new Date(data.due_at).toLocaleDateString([], {month:'short', day:'numeric'}) : '';
         refreshSteps();
     }
 
@@ -177,20 +247,16 @@
         list.innerHTML = data.map(s => `
             <div class="substep-row" data-id="${s.id}" onclick="handleRowClick(event, ${s.id}, '${s.task_text.replace(/'/g, "\\'")}')">
                 <div class="drag-handle">⋮⋮</div>
-                <div class="circle-check ${s.is_completed ? 'checked' : ''}" onclick="toggleCheck(${s.id}, ${s.is_completed}, event)"></div>
-                <div class="editable-text" contenteditable="true" onblur="updateTaskTextFromInline(${s.id}, this)" onkeypress="if(event.key==='Enter'){this.blur(); return false;}" onclick="event.stopPropagation()">${s.task_text}</div>
-                <button class="delete-btn" onclick="deleteTask(${s.id}, event)">×</button>
+                <div class="circle-check ${s.is_completed ? 'checked' : ''}"></div>
+                <div class="editable-text" contenteditable="true" onblur="updateTaskTextFromInline(${s.id}, this)">${s.task_text}</div>
             </div>
         `).join('');
         initSortable(list);
     }
 
-    // Standard Helpers
     quill = new Quill('#notes-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }]] } });
     async function saveNotes() { await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Notes saved."); }
-    async function updateTaskField(f, v) { await _supabase.from('subtasks').update({ [f]: v }).eq('id', currentTaskId); }
-    async function deleteTask(id, e) { if(e) e.stopPropagation(); if(confirm("Delete?")) { await _supabase.from('subtasks').delete().eq('id', id); refreshTasks(); closeDetails(); } }
-    async function toggleCheck(id, status, e) { if(e) e.stopPropagation(); await _supabase.from('subtasks').update({ is_completed: !status }).eq('id', id); refreshTasks(); if(id === currentTaskId) refreshSteps(); }
+    async function updateTaskField(f, v) { await _supabase.from('subtasks').update({ [f]: v }).eq('id', currentTaskId); refreshTasks(); }
     async function handleNewTask(e) { if(e.key === 'Enter') { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: e.target.value, position: 0 }]); e.target.value=''; refreshTasks(); } }
     async function promptAddStep() { const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, parent_id: currentTaskId, task_text: v, position: 0 }]); refreshSteps(); } }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
@@ -212,6 +278,8 @@
     }
     function selectCategory(id, name) { currentCategoryId = id; document.getElementById('task-list-header').innerText = name; refreshCategories(); refreshTasks(); }
     async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
+    
+    updateMenuLabels();
     refreshCategories();
 </script>
 </body>
