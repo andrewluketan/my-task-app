@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task App</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --milwaukee-red: #da291c; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f0f0; margin: 0; display: flex; justify-content: center; padding: 20px; }
+        .app-container { background: white; width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; border-top: 8px solid var(--milwaukee-red); }
+        .header { padding: 20px; background: white; border-bottom: 1px solid #eee; }
+        .input-area { display: flex; padding: 20px; gap: 10px; background: #fafafa; }
+        input { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; outline: none; transition: border-color 0.3s; }
+        input:focus { border-color: var(--milwaukee-red); }
+        button#addBtn { padding: 12px 20px; background: var(--milwaukee-red); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        ul { list-style: none; padding: 0; margin: 0; }
+        li { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; transition: background 0.2s; }
+        li:hover { background: #f9f9f9; }
+        .task-text { flex: 1; margin-left: 15px; font-size: 16px; color: #333; }
+        .completed { text-decoration: line-through; color: #aaa; }
+        input[type="checkbox"] { transform: scale(1.4); cursor: pointer; accent-color: var(--milwaukee-red); }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header"><h1>Workshop Tasks</h1></div>
+    <div class="input-area">
+        <input type="text" id="taskInput" placeholder="Enter a new task...">
+        <button id="addBtn" onclick="addTask()">Add</button>
+    </div>
+    <ul id="taskList"></ul>
+</div>
+
+<script>
+    // --- CONFIGURATION ---
+    const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // --- REALTIME SUBSCRIPTION ---
+    // This part makes it sync instantly like Microsoft Tasks
+    _supabase
+        .channel('schema-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Tasks' }, (payload) => {
+            fetchTasks(); // Refresh UI whenever the database changes
+        })
+        .subscribe();
+
+    // --- APP LOGIC ---
+    async function fetchTasks() {
+        const { data, error } = await _supabase.from('Tasks').select('*').order('created_at', { ascending: false });
+        if (!error) renderTasks(data);
+    }
+
+    function renderTasks(tasks) {
+        const list = document.getElementById('taskList');
+        list.innerHTML = tasks.map(t => `
+            <li>
+                <input type="checkbox" ${t.is_completed ? 'checked' : ''} onchange="toggleTask(${t.id}, ${t.is_completed})">
+                <span class="task-text ${t.is_completed ? 'completed' : ''}">${t.task_text}</span>
+            </li>
+        `).join('');
+    }
+
+    async function addTask() {
+        const input = document.getElementById('taskInput');
+        if (!input.value) return;
+        await _supabase.from('Tasks').insert([{ task_text: input.value }]);
+        input.value = '';
+    }
+
+    async function toggleTask(id, currentStatus) {
+        await _supabase.from('Tasks').update({ is_completed: !currentStatus }).eq('id', id);
+    }
+
+    // Initial Load
+    fetchTasks();
+</script>
+</body>
+</html>
