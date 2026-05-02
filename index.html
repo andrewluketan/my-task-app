@@ -3,62 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strategic Task Manager | Pro Suite Fixed</title>
+    <title>Strategic Task Manager | Final Suite</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     <style>
-        :root { --sidebar-bg: #f3f4f6; --main-blue: #4b69ff; --border: #e5e7eb; --red: #dc2626; }
+        :root { --sidebar-bg: #f3f4f6; --main-blue: #4b69ff; --border: #e5e7eb; --red: #dc2626; --text: #444; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; display: flex; height: 100vh; background: white; overflow: hidden; font-size: 14px; }
 
-        /* Global Layout */
-        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding-bottom: 60px; }
-        #main-content { width: 350px; display: flex; flex-direction: column; background: var(--main-blue); color: white; border-right: 1px solid rgba(0,0,0,0.1); padding-bottom: 60px; }
-        #detail-pane { flex: 1; min-width: 400px; background: #fafafa; border-left: 1px solid var(--border); display: flex; flex-direction: column; position: relative; padding-bottom: 60px; }
+        /* Layout Columns */
+        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding-bottom: 60px; flex-shrink: 0; }
+        #main-content { width: 350px; display: flex; flex-direction: column; background: var(--main-blue); color: white; border-right: 1px solid rgba(0,0,0,0.1); padding-bottom: 60px; flex-shrink: 0; }
+        #detail-pane { flex: 1; min-width: 400px; background: #fafafa; border-left: 1px solid var(--border); display: flex; flex-direction: column; padding-bottom: 60px; }
 
-        /* Navigation */
-        .sidebar-item { padding: 12px 20px; cursor: pointer; font-size: 14px; color: #374151; display: flex; align-items: center; border-bottom: 1px solid transparent; }
-        .sidebar-item:hover { background: #e5e7eb; }
-        .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 600; border-left: 4px solid var(--main-blue); }
+        /* Sidebar Navigation (Fix 1) */
+        .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; display: flex; align-items: center; gap: 10px; }
+        .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
 
-        /* Task & Step Items */
+        /* Task Rows */
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
         #task-items-container { flex: 1; padding: 10px 25px; overflow-y: auto; }
-        
         .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
-        
-        /* Fixed Inline Editing width so it doesn't block row clicks */
-        .editable-text { outline: none; padding: 2px 6px; border-radius: 2px; cursor: text; width: fit-content; min-width: 50px; max-width: 80%; }
 
-        /* Recursive Tree Structures */
+        /* Recursive Tree (Fix 3) */
         .detail-header { padding: 25px 30px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px; }
         .detail-scroll-area { flex: 1; overflow-y: auto; padding: 25px 30px; }
-        .tree-container { margin-left: 15px; border-left: 1px solid #eee; padding-left: 10px; }
-        .step-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #f0f0f0; background: white; position: relative; }
+        .tree-container { margin-left: 20px; border-left: 1px solid #eee; padding-left: 10px; }
+        .step-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-bottom: 1px solid #f0f0f0; background: white; position: relative; }
+        .editable-text { outline: none; padding: 2px 6px; border-radius: 2px; cursor: text; flex: 1; }
 
-        /* MS Style Context Menu */
+        /* Context Menu */
         .context-trigger { cursor: pointer; color: #aaa; font-size: 18px; padding: 0 8px; margin-left: auto; }
         .context-menu { position: absolute; top: 100%; right: 10px; width: 220px; background: white; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; z-index: 200; }
-        .menu-option { display: flex; align-items: center; gap: 12px; padding: 10px 16px; color: #333; cursor: pointer; }
+        .menu-option { display: flex; align-items: center; gap: 12px; padding: 10px 16px; color: #333; cursor: pointer; font-weight: 500; }
         .menu-option:hover { background: #f3f4f6; }
 
-        /* Action Row Fixed at bottom */
+        /* Scheduling Menus */
+        .detail-section { background: white; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px; padding: 4px 0; }
+        .detail-item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; font-size: 14px; color: var(--text); border-bottom: 1px solid #f3f4f6; cursor: pointer; position: relative; }
+        .date-display { margin-left: auto; color: var(--main-blue); font-weight: 600; font-size: 12px; }
+        .datepicker-menu { position: absolute; top: 100%; left: 0; width: 280px; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; z-index: 100; padding: 8px 0; }
+        .picker-option { display: flex; align-items: center; padding: 10px 20px; }
+        .picker-option:hover { background: #f3f4f6; }
+
+        /* Bottom Row (Fix 2) */
         #global-actions { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: white; border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0; z-index: 1000; }
         .action-cell { height: 100%; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; }
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
-        
+
+        #editor-wrapper { background: white; border: 1px solid var(--border); border-radius: 4px; margin-top: 15px; }
         .resizer { width: 6px; cursor: col-resize; background: transparent; flex-shrink: 0; z-index: 10; }
-        .white-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; outline: none; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <div style="padding: 20px;"><input type="text" placeholder="Search" class="white-input"></div>
+        <div style="padding: 20px;"><input type="text" placeholder="Search" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;"></div>
         <div id="category-list"></div>
     </div>
     <div class="resizer" id="resizer1"></div>
@@ -72,18 +76,43 @@
     <div id="detail-pane">
         <div class="detail-header">
             <div class="circle-check" id="detail-check"></div>
-            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;"></div>
+            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;" onblur="updateTaskText(currentTaskId, this)"></div>
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px; margin-left: auto;">✕</button>
         </div>
         <div class="detail-scroll-area">
-            <div style="background: white; border: 1px solid var(--border); border-radius: 4px; padding: 10px;">
+            <!-- Tree Structure -->
+            <div class="detail-section">
                 <div id="recursive-steps-root" data-parent-id="null"></div>
-                <div style="color:var(--main-blue); font-weight:600; padding:10px; cursor:pointer;" onclick="promptAddStep()">+ Add step</div>
+                <div style="color:var(--main-blue); font-weight:700; padding:12px 20px; cursor:pointer;" onclick="promptAddStep()">+ Add step</div>
             </div>
-            <div id="editor-wrapper" style="margin-top:20px;"><div id="notes-editor"></div></div>
+
+            <!-- Scheduling -->
+            <div class="detail-section">
+                <div class="detail-item" onclick="toggleMenu('remind-menu')">
+                    <span>⏰</span> Remind me <span id="remind-val" class="date-display"></span>
+                    <div id="remind-menu" class="datepicker-menu">
+                        <div class="picker-option" onclick="setQuickDate('remind', 'today')">Later today (4pm)</div>
+                        <div class="picker-option" onclick="setQuickDate('remind', 'tomorrow')">Tomorrow (9am)</div>
+                        <div class="picker-option" onclick="showManual('remind')">Pick a date & time</div>
+                        <div id="manual-remind" style="display:none; padding:10px;"><input type="datetime-local" onchange="updateTaskField('remind_at', this.value)"></div>
+                    </div>
+                </div>
+                <div class="detail-item" onclick="toggleMenu('due-menu')">
+                    <span>📅</span> Add due date <span id="due-val" class="date-display"></span>
+                    <div id="due-menu" class="datepicker-menu">
+                        <div class="picker-option" onclick="setQuickDate('due', 'today')">Today (6pm)</div>
+                        <div class="picker-option" onclick="setQuickDate('due', 'tomorrow')">Tomorrow (9am)</div>
+                        <div class="picker-option" onclick="showManual('due')">Pick a date</div>
+                        <div id="manual-due" style="display:none; padding:10px;"><input type="date" onchange="updateTaskField('due_at', this.value)"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="editor-wrapper"><div id="notes-editor"></div></div>
         </div>
     </div>
 
+    <!-- Action Row (Fix 2) -->
     <div id="global-actions">
         <div class="action-cell" style="width: 280px;"><button class="btn-bottom" style="color:var(--main-blue);" onclick="addCategory()">+ New List</button></div>
         <div class="action-cell" style="width: 350px;"><button class="btn-bottom" style="color:var(--main-blue);" onclick="promptAddTask()">+ Add A Task</button></div>
@@ -97,6 +126,7 @@
 
     let currentCategoryId = null, currentTaskId = null, quill = null;
 
+    // --- RECURSIVE TREE LOGIC (Fix 3) ---
     async function loadTree(catId, parentId, containerId) {
         const query = _supabase.from('subtasks').select('*').eq('category_id', catId);
         if(parentId === "null") { query.is('parent_id', null); } else { query.eq('parent_id', Number(parentId)); }
@@ -114,7 +144,7 @@
                 <div class="drag-handle" style="cursor:grab; color:#ccc;">⋮⋮</div>
                 <div class="circle-check ${s.is_completed ? 'checked' : ''}" onclick="toggleCheck(${s.id}, ${s.is_completed})"></div>
                 <div class="editable-text" contenteditable="true" onblur="updateTaskText(${s.id}, this)" onclick="event.stopPropagation()">${s.task_text}</div>
-                <div class="context-trigger" onclick="toggleContext('ctx-${s.id}')">⋮</div>
+                <div class="context-trigger" onclick="toggleMenu('ctx-${s.id}')">⋮</div>
                 <div class="context-menu" id="ctx-${s.id}">
                     <div class="menu-option" onclick="toggleCheck(${s.id}, ${s.is_completed})">Mark ${s.is_completed ? 'Incomplete' : 'Complete'}</div>
                     <div class="menu-option" style="color:red" onclick="deleteTask(${s.id})">Delete Step</div>
@@ -129,75 +159,67 @@
             container.appendChild(tree);
             loadTree(catId, s.id, tree.id);
         });
-        new Sortable(container, { group: 'steps', animation: 150, handle: '.drag-handle' });
+        new Sortable(container, { group: 'nested', animation: 150, handle: '.drag-handle' });
     }
 
+    // --- SCHEDULING ---
+    function toggleMenu(id) { event.stopPropagation(); document.querySelectorAll('.datepicker-menu, .context-menu').forEach(m => { if(m.id !== id) m.style.display='none'; }); const m = document.getElementById(id); m.style.display = m.style.display === 'block' ? 'none' : 'block'; }
+    document.addEventListener('click', () => document.querySelectorAll('.datepicker-menu, .context-menu').forEach(m => m.style.display = 'none'));
+    function showManual(type) { event.stopPropagation(); document.getElementById(`manual-${type}`).style.display = 'block'; }
+
+    async function setQuickDate(type, time) {
+        let d = new Date();
+        if(time === 'tomorrow') d.setDate(d.getDate() + 1);
+        d.setHours(type === 'remind' ? 16 : 18, 0, 0, 0);
+        await updateTaskField(type === 'remind' ? 'remind_at' : 'due_at', d.toISOString());
+    }
+
+    // --- CORE ---
     async function refreshCategories() {
         const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
-        const container = document.getElementById('category-list');
-        container.innerHTML = data.map(c => `
-            <div class="sidebar-item ${currentCategoryId == c.id ? 'active' : ''}" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">
-                🏠 ${c.name}
-            </div>
-        `).join('');
+        document.getElementById('category-list').innerHTML = data.map(c => `<div class="sidebar-item ${currentCategoryId == c.id ? 'active' : ''}" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">📋 ${c.name}</div>`).join('');
         if(!currentCategoryId && data.length > 0) selectCategory(data[0].id, data[0].name);
     }
 
-    function selectCategory(id, name) {
-        currentCategoryId = id;
-        document.getElementById('task-list-header').innerText = name;
-        refreshCategories();
-        refreshTasks();
-        closeDetails();
-    }
-
+    function selectCategory(id, name) { currentCategoryId = id; document.getElementById('task-list-header').innerText = name; refreshTasks(); refreshCategories(); closeDetails(); }
+    
     async function refreshTasks() {
-        if (!currentCategoryId) return;
         const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null).order('position', { ascending: true });
-        const container = document.getElementById('task-items-container');
-        container.innerHTML = data.map(t => `
+        document.getElementById('task-items-container').innerHTML = data.map(t => `
             <div class="task-row" onclick="handleRowClick(event, ${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">
                 <div class="circle-check ${t.is_completed ? 'checked' : ''}" onclick="toggleCheck(${t.id}, ${t.is_completed})"></div>
                 <div class="editable-text" contenteditable="true" onblur="updateTaskText(${t.id}, this)" onclick="event.stopPropagation()">${t.task_text}</div>
-            </div>
-        `).join('');
+            </div>`).join('');
     }
 
-    function handleRowClick(e, id, title) {
-        if (!e.target.classList.contains('editable-text') && !e.target.classList.contains('circle-check')) {
-            openDetails(id, title);
-        }
-    }
+    function handleRowClick(e, id, title) { if(!e.target.classList.contains('editable-text') && !e.target.classList.contains('circle-check')) openDetails(id, title); }
 
     async function openDetails(id, title) {
         currentTaskId = id;
         document.getElementById('detail-task-title').innerText = title;
         document.getElementById('detail-pane').style.display = 'flex';
-        const { data } = await _supabase.from('subtasks').select('notes').eq('id', id).single();
+        const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if (quill) quill.root.innerHTML = data.notes || '';
-        refreshSteps();
+        document.getElementById('remind-val').innerText = data.remind_at ? new Date(data.remind_at).toLocaleDateString() : '';
+        document.getElementById('due-val').innerText = data.due_at ? new Date(data.due_at).toLocaleDateString() : '';
+        loadTree(currentCategoryId, id, 'recursive-steps-root');
     }
-
-    function refreshSteps() { if(currentTaskId) loadTree(currentCategoryId, currentTaskId, 'recursive-steps-root'); }
-    function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
-    function toggleContext(id) { event.stopPropagation(); const m = document.getElementById(id); m.style.display = m.style.display === 'block' ? 'none' : 'block'; }
-    document.addEventListener('click', () => document.querySelectorAll('.context-menu').forEach(m => m.style.display = 'none'));
 
     async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); if(id === currentTaskId) refreshTasks(); }
-    async function toggleCheck(id, status) { await _supabase.from('subtasks').update({ is_completed: !status }).eq('id', id); refreshTasks(); if(currentTaskId) refreshSteps(); }
+    async function updateTaskField(f, v) { await _supabase.from('subtasks').update({ [f]: v }).eq('id', currentTaskId); openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); }
+    async function toggleCheck(id, s) { await _supabase.from('subtasks').update({ is_completed: !s }).eq('id', id); refreshTasks(); if(currentTaskId) loadTree(currentCategoryId, currentTaskId, 'recursive-steps-root'); }
     async function deleteTask(id) { if(confirm("Delete?")) { await _supabase.from('subtasks').delete().eq('id', id); refreshTasks(); closeDetails(); } }
-    async function promptAddStep() { const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, parent_id: currentTaskId, task_text: v }]); refreshSteps(); } }
-    async function promptAddTask() { if(!currentCategoryId) return; const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 0 }]); refreshTasks(); } }
+    async function promptAddStep() { const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, parent_id: currentTaskId, task_text: v }]); loadTree(currentCategoryId, currentTaskId, 'recursive-steps-root'); } }
+    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 0 }]); refreshTasks(); } }
     async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
-    
+
     quill = new Quill('#notes-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }]] } });
     async function saveNotes() { if(currentTaskId) { await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Notes saved."); } }
+    function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
 
-    function makeResizable(r, c) {
-        let x=0, w=0; r.addEventListener('mousedown', (e)=>{ x=e.clientX; w=c.getBoundingClientRect().width;
+    function makeResizable(r, c) { let x=0, w=0; r.addEventListener('mousedown', (e)=>{ x=e.clientX; w=c.getBoundingClientRect().width;
         const m=(e)=>{c.style.width=`${w+(e.clientX-x)}px`}; const s=()=>{document.removeEventListener('mousemove',m); document.removeEventListener('mouseup',s)};
-        document.addEventListener('mousemove',m); document.addEventListener('mouseup',s); });
-    }
+        document.addEventListener('mousemove',m); document.addEventListener('mouseup',s); }); }
     makeResizable(document.getElementById('resizer1'), document.getElementById('sidebar'));
     makeResizable(document.getElementById('resizer2'), document.getElementById('main-content'));
 
