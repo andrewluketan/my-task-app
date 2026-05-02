@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strategic Task Manager | Resizable</title>
+    <title>Strategic Task Manager | Pro UI</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
@@ -24,6 +24,15 @@
         .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; }
 
+        /* UPDATED: White Task Input */
+        #add-task-footer { padding: 15px 25px; background: transparent; }
+        .footer-input { 
+            width: 100%; padding: 14px 16px; background: white; border: none; 
+            color: #333; font-size: 14px; outline: none; border-radius: 4px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); box-sizing: border-box;
+        }
+        .footer-input::placeholder { color: #9ca3af; }
+
         /* Column 3: Detail Pane (Right) */
         #detail-pane { flex: 1; min-width: 300px; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; padding: 0; }
         .detail-header { padding: 25px 30px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: flex-start; gap: 15px; }
@@ -32,18 +41,14 @@
         .detail-section { background: white; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px; padding: 4px 0; }
         .detail-item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; font-size: 14px; color: #444; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
         
-        /* The Resizer Bars */
         .resizer { width: 6px; cursor: col-resize; background: transparent; transition: background 0.2s; flex-shrink: 0; z-index: 10; }
         .resizer:hover { background: rgba(75, 105, 255, 0.3); }
 
-        #add-task-footer { padding: 15px 25px; background: rgba(0,0,0,0.1); }
-        .footer-input { width: 100%; padding: 10px; background: transparent; border: none; color: white; font-size: 14px; outline: none; }
         textarea { width: 100%; min-height: 150px; border: none; padding: 20px; outline: none; font-family: inherit; box-sizing: border-box; font-size: 14px; user-select: text; }
     </style>
 </head>
 <body>
 
-    <!-- Column 1 -->
     <div id="sidebar">
         <div style="padding: 20px;"><input type="text" placeholder="Search" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;"></div>
         <div id="category-list"></div>
@@ -52,10 +57,8 @@
         </div>
     </div>
 
-    <!-- Resizer 1 -->
     <div class="resizer" id="resizer1"></div>
 
-    <!-- Column 2 -->
     <div id="main-content">
         <div id="task-list-header">Tasks</div>
         <div id="task-items-container"></div>
@@ -64,17 +67,14 @@
         </div>
     </div>
 
-    <!-- Resizer 2 -->
     <div class="resizer" id="resizer2"></div>
 
-    <!-- Column 3 -->
     <div id="detail-pane">
         <div class="detail-header">
             <div class="circle-check"></div>
             <div style="flex:1;"><h2 id="detail-task-title" style="margin:0; font-size:20px; user-select: text;"></h2></div>
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px;">✕</button>
         </div>
-        
         <div class="detail-scroll-area">
             <div class="detail-section">
                 <div id="sub-steps-list"></div>
@@ -92,20 +92,15 @@
 
     let currentCategoryId = null, currentTaskId = null;
 
-    // --- Resizing Logic ---
-    function makeResizable(resizer, leftCol, rightCol) {
+    function makeResizable(resizer, leftCol) {
         let x = 0, w = 0;
         const mouseDownHandler = (e) => {
-            x = e.clientX;
-            w = leftCol.getBoundingClientRect().width;
+            x = e.clientX; w = leftCol.getBoundingClientRect().width;
             document.addEventListener('mousemove', mouseMoveHandler);
             document.addEventListener('mouseup', mouseUpHandler);
             resizer.style.background = 'var(--main-blue)';
         };
-        const mouseMoveHandler = (e) => {
-            const dx = e.clientX - x;
-            leftCol.style.width = `${w + dx}px`;
-        };
+        const mouseMoveHandler = (e) => { leftCol.style.width = `${w + (e.clientX - x)}px`; };
         const mouseUpHandler = () => {
             document.removeEventListener('mousemove', mouseMoveHandler);
             document.removeEventListener('mouseup', mouseUpHandler);
@@ -117,7 +112,6 @@
     makeResizable(document.getElementById('resizer1'), document.getElementById('sidebar'));
     makeResizable(document.getElementById('resizer2'), document.getElementById('main-content'));
 
-    // --- Core Functions ---
     async function refreshCategories() {
         const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
         const list = document.getElementById('category-list');
