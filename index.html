@@ -69,7 +69,7 @@
         .drag-handle { cursor: grab; color: #ccc; font-size: 18px; padding: 0 4px; }
         #editor-wrapper { background: white; border: 1px solid var(--border); border-radius: 4px; margin-top: 15px; }
         
-        /* QUILL Placeholder Fix */
+        /* Placeholder styling for Notes */
         .ql-editor.ql-blank::before { color: rgba(0,0,0,0.3); content: "+ Add Notes"; font-style: normal; font-weight: bold; }
     </style>
 </head>
@@ -272,6 +272,14 @@
     }
 
     // --- UI & CORE SYNC ---
+    async function selectCategory(id, name) { 
+        currentCategoryId = id; 
+        document.getElementById('task-list-header').innerText = name; 
+        refreshTasks(); 
+        refreshCategories(); 
+        closeDetails(); 
+    }
+
     async function refreshTasks() {
         if (!currentCategoryId) return;
         const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null).order('position', { ascending: true });
