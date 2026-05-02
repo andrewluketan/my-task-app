@@ -5,13 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omni-Task Manager</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- (9) WYSIWYG Editor for Rich Text Notes -->
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
     <style>
         :root { --milwaukee-red: #da291c; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; color: #333; }
         .container { max-width: 900px; margin: auto; }
         .category-card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 25px; margin-bottom: 30px; border-top: 6px solid var(--milwaukee-red); }
-        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; background: var(--milwaukee-red); color: white; }
-        .empty-state { text-align: center; margin-top: 50px; color: #888; }
+        .cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .timestamp { font-size: 0.75rem; color: #888; }
+        .subtask-list { margin-left: 20px; border-left: 2px solid #eee; padding-left: 15px; }
+        .subtask-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #f0f0f0; }
+        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; transition: 0.2s; }
+        .btn-main { background: var(--milwaukee-red); color: white; }
+        .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; border-radius: 4px; }
+        .note-area { margin-top: 20px; background: #fffdf5; border: 1px solid #ffeeba; border-radius: 8px; padding: 10px; }
     </style>
 </head>
 <body>
@@ -19,61 +27,141 @@
 <div class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
         <h1>Strategic Project Manager</h1>
-        <button class="btn" onclick="addCategory()">+ New Category</button>
+        <button class="btn btn-main" onclick="addCategory()">+ New Category</button>
     </div>
     <div id="app-root"></div>
 </div>
 
 <script>
     // --- CONFIGURATION ---
-    const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; // Ensure this is your public anon key
+    const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co'; 
+    const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; 
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // --- (1) Add Category with Error Feedback ---
+    // --- (1, 2) Category Logic ---
     async function addCategory() {
         const name = prompt("Enter Category Name:");
         if (!name) return;
+        const { error } = await _supabase.from('categories').insert([{ name }]);
+        if (error) alert("Error: " + error.message);
+        refreshUI();
+    }
 
-        console.log("Attempting to save category:", name);
-        const { data, error } = await _supabase.from('Categories').insert([{ name }]).select();
-        
-        if (error) {
-            alert("Database Error: " + error.message);
-            console.error("Insert Error:", error);
-        } else {
-            console.log("Successfully saved:", data);
+    async function editCategory(id, oldName) {
+        const newName = prompt("Edit Category Name:", oldName);
+        if (newName) await _supabase.from('categories').update({ name: newName }).eq('id', id);
+        refreshUI();
+    }
+
+    async function deleteCategory(id) {
+        if (confirm("Delete this entire project category?")) {
+            await _supabase.from('categories').delete().eq('id', id);
             refreshUI();
         }
     }
 
-    // --- (7) Load and Render ---
+    // --- (3, 8) Sub-task Logic ---
+    async function addSubTask(catId, parentId = null) {
+        const text = prompt("Task description:");
+        if (!text) return;
+        await _supabase.from('subtasks').insert([{ 
+            category_id: catId, 
+            parent_id: parentId, 
+            task_text: text 
+        }]);
+        refreshUI();
+    }
+
+    async function promoteTask(taskId, currentParentId) {
+        if (!currentParentId) return; 
+        const { data: parent } = await _supabase.from('subtasks').select('parent_id').eq('id', currentParentId).single();
+        await _supabase.from('subtasks').update({ parent_id: parent.parent_id }).eq('id', taskId);
+        refreshUI();
+    }
+
+    // --- (9) WYSIWYG Note Saving ---
+    async function saveNotes(catId) {
+        const content = tinymce.get(`editor-${catId}`).getContent();
+        await _supabase.from('categories').update({ notes: content }).eq('id', catId);
+        alert("Project notes saved.");
+    }
+
+    // --- UI Rendering ---
     async function refreshUI() {
-        console.log("Refreshing UI...");
-        const { data: cats, error } = await _supabase.from('Categories').select('*').order('created_at', { ascending: false });
-        
+        const { data: cats, error } = await _supabase.from('categories').select('*').order('created_at', { ascending: false });
         if (error) {
             console.error("Fetch Error:", error);
             return;
         }
 
         const root = document.getElementById('app-root');
-        if (!cats || cats.length === 0) {
-            root.innerHTML = '<div class="empty-state"><h3>No projects yet.</h3><p>Click "+ New Category" to organize your workshop or business tasks.</p></div>';
-            return;
-        }
+        root.innerHTML = '';
 
-        root.innerHTML = cats.map(cat => `
-            <div class="category-card">
-                <h2>${cat.name}</h2>
-                <p style="font-size: 0.8rem; color: #888;">Started: ${new Date(cat.created_at).toLocaleDateString()}</p>
-                <hr>
-                <p>Tasks will appear here once added.</p>
-            </div>
-        `).join('');
+        for (const cat of cats) {
+            const card = document.createElement('div');
+            card.className = 'category-card';
+            const dateStr = new Date(cat.created_at).toLocaleDateString('en-SG', { dateStyle: 'long' });
+            
+            card.innerHTML = `
+                <div class="cat-header">
+                    <div>
+                        <h2 style="margin:0; cursor:pointer;" onclick="editCategory(${cat.id}, '${cat.name}')">${cat.name} ✎</h2>
+                        <span class="timestamp">Started: ${dateStr}</span>
+                    </div>
+                    <button class="btn-small" onclick="deleteCategory(${cat.id})">Delete Category</button>
+                </div>
+                <div class="note-area">
+                    <textarea id="editor-${cat.id}">${cat.notes || ''}</textarea>
+                    <button class="btn btn-small" style="margin-top:10px; background:#fff; border:1px solid #ddd;" onclick="saveNotes(${cat.id})">Save Project Notes</button>
+                </div>
+                <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
+                <div id="tasks-for-${cat.id}"></div>
+                <button class="btn btn-main" style="margin-top:15px; font-size:12px;" onclick="addSubTask(${cat.id})">+ Add Main Task</button>
+            `;
+            root.appendChild(card);
+            tinymce.init({ selector: `#editor-${cat.id}`, menubar: false, height: 150 });
+            renderTree(cat.id, null, `tasks-for-${cat.id}`);
+        }
     }
 
-    // Initial load
+    async function renderTree(catId, parentId, containerId) {
+        const { data: tasks } = await _supabase.from('subtasks')
+            .select('*')
+            .eq('category_id', catId)
+            .eq('parent_id', parentId)
+            .order('created_at', { ascending: true });
+
+        const container = document.getElementById(containerId);
+        if (!tasks) return;
+
+        tasks.forEach(task => {
+            const item = document.createElement('div');
+            item.className = 'subtask-item';
+            item.innerHTML = `
+                <input type="checkbox" ${task.is_completed ? 'checked' : ''} onchange="toggleComplete(${task.id}, ${task.is_completed})">
+                <span style="flex:1">${task.task_text}</span>
+                <button class="btn-small" onclick="addSubTask(${catId}, ${task.id})">+ Sub</button>
+                <button class="btn-small" onclick="promoteTask(${task.id}, ${task.parent_id})">↑ Up</button>
+            `;
+            const subContainer = document.createElement('div');
+            subContainer.className = 'subtask-list';
+            subContainer.id = `children-of-${task.id}`;
+            container.appendChild(item);
+            container.appendChild(subContainer);
+            renderTree(catId, task.id, subContainer.id);
+        });
+    }
+
+    async function toggleComplete(id, status) {
+        await _supabase.from('subtasks').update({ is_completed: !status }).eq('id', id);
+        refreshUI();
+    }
+
+    // Realtime Sync
+    _supabase.channel('db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => refreshUI())
+        .subscribe();
+
     refreshUI();
 </script>
 </body>
