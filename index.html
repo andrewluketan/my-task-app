@@ -9,15 +9,17 @@
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <style>
         :root { --milwaukee-red: #da291c; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; color: #333; }
         .container { max-width: 900px; margin: auto; }
         .category-card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 30px; border-top: 6px solid var(--milwaukee-red); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .subtask-list { margin-left: 20px; border-left: 2px solid #eee; padding-left: 15px; }
-        .subtask-item { display: flex; align-items: center; gap: 10px; padding: 6px; border-bottom: 1px solid #f0f0f0; }
-        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; }
+        .subtask-list { margin-left: 20px; border-left: 2px solid #eee; padding-left: 15px; margin-top: 5px; }
+        .subtask-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; background: #fff; }
+        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; transition: 0.2s; }
         .btn-main { background: var(--milwaukee-red); color: white; }
-        .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; border: 1px solid #ddd; }
-        .editor-container { background: #fff; height: 120px; }
+        .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; border-radius: 4px; border: 1px solid #ddd; }
+        .editor-container { background: #fff; height: 150px; }
+        .task-text { flex: 1; font-size: 14px; }
+        .completed { text-decoration: line-through; color: #aaa; }
     </style>
 </head>
 <body>
@@ -54,9 +56,34 @@
         refreshUI();
     }
 
+    async function toggleComplete(id, status) {
+        await _supabase.from('subtasks').update({ is_completed: !status }).eq('id', id);
+        refreshUI();
+    }
+
+    async function deleteSubTask(id) {
+        if (confirm("Delete this task?")) {
+            await _supabase.from('subtasks').delete().eq('id', id);
+            refreshUI();
+        }
+    }
+
+    async function promoteTask(taskId, currentParentId) {
+        if (!currentParentId) return; 
+        const { data: parent } = await _supabase.from('subtasks').select('parent_id').eq('id', currentParentId).single();
+        await _supabase.from('subtasks').update({ parent_id: parent.parent_id }).eq('id', taskId);
+        refreshUI();
+    }
+
+    async function saveNotes(catId) {
+        const content = editors[catId].root.innerHTML;
+        await _supabase.from('categories').update({ notes: content }).eq('id', catId);
+        alert("Notes saved.");
+    }
+
     async function refreshUI() {
         const { data: cats, error } = await _supabase.from('categories').select('*').order('created_at', { ascending: false });
-        if (error) { alert("Error loading categories: " + error.message); return; }
+        if (error) return;
 
         const root = document.getElementById('app-root');
         root.innerHTML = '';
@@ -65,39 +92,64 @@
             const card = document.createElement('div');
             card.className = 'category-card';
             card.innerHTML = `
-                <h2>${cat.name}</h2>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2>${cat.name}</h2>
+                    <button class="btn-small" onclick="deleteCategory(${cat.id})">Delete</button>
+                </div>
                 <div id="editor-${cat.id}" class="editor-container">${cat.notes || ''}</div>
-                <button class="btn btn-small" onclick="saveNotes(${cat.id})">Save Notes</button>
-                <hr style="margin:20px 0;">
-                <div id="tasks-for-${cat.id}">Checking for tasks...</div>
+                <button class="btn btn-small" style="margin-top:10px;" onclick="saveNotes(${cat.id})">Save Project Notes</button>
+                <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
+                <div id="tasks-for-${cat.id}"></div>
                 <button class="btn btn-main" style="margin-top:15px; font-size:12px;" onclick="addSubTask(${cat.id})">+ Add Main Task</button>
             `;
             root.appendChild(card);
             
-            editors[cat.id] = new Quill(`#editor-${cat.id}`, { theme: 'snow', modules: { toolbar: false } });
+            editors[cat.id] = new Quill(`#editor-${cat.id}`, {
+                theme: 'snow',
+                modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'list': 'bullet' }], ['clean']] }
+            });
 
-            // Trigger the task load
-            loadTasks(cat.id);
+            await renderTree(cat.id, null, `tasks-for-${cat.id}`);
         }
     }
 
-    async function loadTasks(catId) {
-        const { data: tasks, error } = await _supabase.from('subtasks')
+    async function renderTree(catId, parentId, containerId) {
+        const query = _supabase.from('subtasks')
             .select('*')
             .eq('category_id', Number(catId))
-            .is('parent_id', null)
             .order('created_at', { ascending: true });
 
-        const container = document.getElementById(`tasks-for-${catId}`);
-        if (error) {
-            container.innerHTML = `<span style="color:red">Error: ${error.message}</span>`;
-            return;
-        }
+        // Correctly handle the NULL vs ID check for nesting
+        if (parentId === null) { query.is('parent_id', null); } 
+        else { query.eq('parent_id', Number(parentId)); }
 
-        if (tasks.length === 0) {
-            container.innerHTML = '<p style="color:#aaa; font-size:12px;">No tasks found in database.</p>';
-        } else {
-            container.innerHTML = tasks.map(t => `<div class="subtask-item"><span>${t.task_text}</span></div>`).join('');
+        const { data: tasks } = await query;
+        const container = document.getElementById(containerId);
+        if (!tasks || !container) return;
+
+        for (const task of tasks) {
+            const item = document.createElement('div');
+            item.className = 'subtask-item';
+            item.innerHTML = `
+                <input type="checkbox" ${task.is_completed ? 'checked' : ''} onchange="toggleComplete(${task.id}, ${task.is_completed})">
+                <span class="task-text ${task.is_completed ? 'completed' : ''}">${task.task_text}</span>
+                <button class="btn-small" onclick="addSubTask(${catId}, ${task.id})">+ Sub</button>
+                <button class="btn-small" onclick="promoteTask(${task.id}, ${task.parent_id})">↑ Up</button>
+                <button class="btn-small" style="color:red" onclick="deleteSubTask(${task.id})">×</button>
+            `;
+            const subContainer = document.createElement('div');
+            subContainer.className = 'subtask-list';
+            subContainer.id = `children-of-${task.id}`;
+            container.appendChild(item);
+            container.appendChild(subContainer);
+            await renderTree(catId, task.id, subContainer.id);
+        }
+    }
+
+    async function deleteCategory(id) {
+        if (confirm("Delete this category?")) {
+            await _supabase.from('categories').delete().eq('id', id);
+            refreshUI();
         }
     }
 
