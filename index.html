@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omni-Task Manager</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- (9) WYSIWYG Editor for Rich Text Notes -->
-    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    
+    <!-- (9) New WYSIWYG Editor: Quill.js (No API Key Required) -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
     <style>
         :root { --milwaukee-red: #da291c; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; color: #333; }
@@ -19,7 +22,11 @@
         .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; transition: 0.2s; }
         .btn-main { background: var(--milwaukee-red); color: white; }
         .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; border-radius: 4px; }
-        .note-area { margin-top: 20px; background: #fffdf5; border: 1px solid #ffeeba; border-radius: 8px; padding: 10px; }
+        
+        /* Quill Editor Styling */
+        .editor-container { background: #fff; border-radius: 0 0 8px 8px; }
+        .ql-toolbar { border-radius: 8px 8px 0 0; background: #fdfdfd; }
+        .note-wrapper { margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -33,17 +40,16 @@
 </div>
 
 <script>
-    // --- CONFIGURATION ---
     const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co'; 
     const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; 
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // --- (1, 2) Category Logic ---
+    let editors = {}; // Store Quill instances
+
     async function addCategory() {
         const name = prompt("Enter Category Name:");
         if (!name) return;
-        const { error } = await _supabase.from('categories').insert([{ name }]);
-        if (error) alert("Error: " + error.message);
+        await _supabase.from('categories').insert([{ name }]);
         refreshUI();
     }
 
@@ -60,15 +66,10 @@
         }
     }
 
-    // --- (3, 8) Sub-task Logic ---
     async function addSubTask(catId, parentId = null) {
         const text = prompt("Task description:");
         if (!text) return;
-        await _supabase.from('subtasks').insert([{ 
-            category_id: catId, 
-            parent_id: parentId, 
-            task_text: text 
-        }]);
+        await _supabase.from('subtasks').insert([{ category_id: catId, parent_id: parentId, task_text: text }]);
         refreshUI();
     }
 
@@ -79,23 +80,20 @@
         refreshUI();
     }
 
-    // --- (9) WYSIWYG Note Saving ---
+    // --- (9) Updated Notes Logic for Quill ---
     async function saveNotes(catId) {
-        const content = tinymce.get(`editor-${catId}`).getContent();
-        await _supabase.from('categories').update({ notes: content }).eq('id', catId);
-        alert("Project notes saved.");
+        const content = editors[catId].root.innerHTML;
+        const { error } = await _supabase.from('categories').update({ notes: content }).eq('id', catId);
+        if (!error) alert("Project notes saved.");
     }
 
-    // --- UI Rendering ---
     async function refreshUI() {
         const { data: cats, error } = await _supabase.from('categories').select('*').order('created_at', { ascending: false });
-        if (error) {
-            console.error("Fetch Error:", error);
-            return;
-        }
+        if (error) return;
 
         const root = document.getElementById('app-root');
         root.innerHTML = '';
+        editors = {}; 
 
         for (const cat of cats) {
             const card = document.createElement('div');
@@ -110,8 +108,8 @@
                     </div>
                     <button class="btn-small" onclick="deleteCategory(${cat.id})">Delete Category</button>
                 </div>
-                <div class="note-area">
-                    <textarea id="editor-${cat.id}">${cat.notes || ''}</textarea>
+                <div class="note-wrapper">
+                    <div id="editor-${cat.id}" class="editor-container">${cat.notes || ''}</div>
                     <button class="btn btn-small" style="margin-top:10px; background:#fff; border:1px solid #ddd;" onclick="saveNotes(${cat.id})">Save Project Notes</button>
                 </div>
                 <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
@@ -119,7 +117,13 @@
                 <button class="btn btn-main" style="margin-top:15px; font-size:12px;" onclick="addSubTask(${cat.id})">+ Add Main Task</button>
             `;
             root.appendChild(card);
-            tinymce.init({ selector: `#editor-${cat.id}`, menubar: false, height: 150 });
+            
+            // Initialize Quill for this category
+            editors[cat.id] = new Quill(`#editor-${cat.id}`, {
+                theme: 'snow',
+                modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['clean']] }
+            });
+
             renderTree(cat.id, null, `tasks-for-${cat.id}`);
         }
     }
@@ -157,11 +161,7 @@
         refreshUI();
     }
 
-    // Realtime Sync
-    _supabase.channel('db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public' }, () => refreshUI())
-        .subscribe();
-
+    _supabase.channel('db-changes').on('postgres_changes', { event: '*', schema: 'public' }, () => refreshUI()).subscribe();
     refreshUI();
 </script>
 </body>
