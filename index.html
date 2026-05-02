@@ -12,12 +12,12 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; color: #333; }
         .container { max-width: 900px; margin: auto; }
         .category-card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 30px; border-top: 6px solid var(--milwaukee-red); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .subtask-list { margin-left: 20px; border-left: 2px solid #eee; padding-left: 15px; margin-top: 5px; }
+        .subtask-list { margin-left: 25px; border-left: 2px solid #eee; padding-left: 15px; margin-top: 5px; }
         .subtask-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; background: #fff; }
-        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; transition: 0.2s; }
+        .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; }
         .btn-main { background: var(--milwaukee-red); color: white; }
-        .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; border-radius: 4px; border: 1px solid #ddd; }
-        .editor-container { background: #fff; height: 150px; }
+        .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; border: 1px solid #ddd; border-radius: 4px; }
+        .editor-container { background: #fff; height: 150px; border-radius: 0 0 8px 8px; }
         .task-text { flex: 1; font-size: 14px; }
         .completed { text-decoration: line-through; color: #aaa; }
     </style>
@@ -48,11 +48,15 @@
     async function addSubTask(catId, parentId = null) {
         const text = prompt("Task description:");
         if (!text) return;
-        await _supabase.from('subtasks').insert([{ 
+        
+        // Ensure IDs are treated as numbers for the database
+        const { error } = await _supabase.from('subtasks').insert([{ 
             category_id: Number(catId), 
             parent_id: parentId ? Number(parentId) : null, 
             task_text: text 
         }]);
+        
+        if (error) alert("Save Error: " + error.message);
         refreshUI();
     }
 
@@ -62,7 +66,7 @@
     }
 
     async function deleteSubTask(id) {
-        if (confirm("Delete this task?")) {
+        if (confirm("Delete this task and all its sub-tasks?")) {
             await _supabase.from('subtasks').delete().eq('id', id);
             refreshUI();
         }
@@ -70,15 +74,15 @@
 
     async function promoteTask(taskId, currentParentId) {
         if (!currentParentId) return; 
-        const { data: parent } = await _supabase.from('subtasks').select('parent_id').eq('id', currentParentId).single();
-        await _supabase.from('subtasks').update({ parent_id: parent.parent_id }).eq('id', taskId);
+        const { data: parent } = await _supabase.from('subtasks').select('parent_id').eq('id', Number(currentParentId)).single();
+        await _supabase.from('subtasks').update({ parent_id: parent ? parent.parent_id : null }).eq('id', Number(taskId));
         refreshUI();
     }
 
     async function saveNotes(catId) {
         const content = editors[catId].root.innerHTML;
-        await _supabase.from('categories').update({ notes: content }).eq('id', catId);
-        alert("Notes saved.");
+        await _supabase.from('categories').update({ notes: content }).eq('id', Number(catId));
+        alert("Notes saved successfully.");
     }
 
     async function refreshUI() {
@@ -87,14 +91,15 @@
 
         const root = document.getElementById('app-root');
         root.innerHTML = '';
+        editors = {}; 
 
         for (const cat of cats) {
             const card = document.createElement('div');
             card.className = 'category-card';
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h2>${cat.name}</h2>
-                    <button class="btn-small" onclick="deleteCategory(${cat.id})">Delete</button>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h2 style="margin:0">${cat.name}</h2>
+                    <button class="btn-small" style="color:red" onclick="deleteCategory(${cat.id})">Delete Category</button>
                 </div>
                 <div id="editor-${cat.id}" class="editor-container">${cat.notes || ''}</div>
                 <button class="btn btn-small" style="margin-top:10px;" onclick="saveNotes(${cat.id})">Save Project Notes</button>
@@ -106,26 +111,33 @@
             
             editors[cat.id] = new Quill(`#editor-${cat.id}`, {
                 theme: 'snow',
-                modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'list': 'bullet' }], ['clean']] }
+                modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }], ['clean']] }
             });
 
-            await renderTree(cat.id, null, `tasks-for-${cat.id}`);
+            // Trigger the initial load for top-level tasks
+            renderTree(cat.id, null, `tasks-for-${cat.id}`);
         }
     }
 
     async function renderTree(catId, parentId, containerId) {
-        const query = _supabase.from('subtasks')
+        let query = _supabase.from('subtasks')
             .select('*')
             .eq('category_id', Number(catId))
             .order('created_at', { ascending: true });
 
-        // Correctly handle the NULL vs ID check for nesting
-        if (parentId === null) { query.is('parent_id', null); } 
-        else { query.eq('parent_id', Number(parentId)); }
+        // Handle the NULL vs Value check for the parent_id column
+        if (parentId === null) {
+            query = query.is('parent_id', null);
+        } else {
+            query = query.eq('parent_id', Number(parentId));
+        }
 
         const { data: tasks } = await query;
         const container = document.getElementById(containerId);
         if (!tasks || !container) return;
+
+        // Clear "Loading..." or old content if this is the top level
+        if (parentId === null) container.innerHTML = '';
 
         for (const task of tasks) {
             const item = document.createElement('div');
@@ -137,11 +149,15 @@
                 <button class="btn-small" onclick="promoteTask(${task.id}, ${task.parent_id})">↑ Up</button>
                 <button class="btn-small" style="color:red" onclick="deleteSubTask(${task.id})">×</button>
             `;
+            
             const subContainer = document.createElement('div');
             subContainer.className = 'subtask-list';
             subContainer.id = `children-of-${task.id}`;
+            
             container.appendChild(item);
             container.appendChild(subContainer);
+            
+            // Recursive call: find tasks where parent_id is THIS task's ID
             await renderTree(catId, task.id, subContainer.id);
         }
     }
