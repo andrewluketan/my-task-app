@@ -19,12 +19,10 @@
         .timestamp { font-size: 0.75rem; color: #888; }
         .subtask-list { margin-left: 20px; border-left: 2px solid #eee; padding-left: 15px; margin-top: 5px; }
         .subtask-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; background: #fff; }
-        .subtask-item:hover { background: #fafafa; }
         .btn { cursor: pointer; padding: 8px 15px; border: none; border-radius: 6px; font-weight: 600; transition: 0.2s; }
         .btn-main { background: var(--milwaukee-red); color: white; }
         .btn-small { padding: 4px 8px; font-size: 11px; background: #eee; border-radius: 4px; border: 1px solid #ddd; }
         .editor-container { background: #fff; height: 150px; }
-        .note-wrapper { margin-top: 20px; }
         .task-text { flex: 1; font-size: 14px; }
         .completed { text-decoration: line-through; color: #aaa; }
     </style>
@@ -42,17 +40,15 @@
 <script>
     // --- CONFIGURATION ---
     const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co'; 
-    const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; 
+    const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY_HERE'; 
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let editors = {}; 
 
-    // --- CATEGORY ACTIONS ---
     async function addCategory() {
-        const name = prompt("Enter Category Name (e.g., Workshop Layout):");
+        const name = prompt("Enter Category Name:");
         if (!name) return;
-        const { error } = await _supabase.from('categories').insert([{ name }]);
-        if (error) alert(error.message);
+        await _supabase.from('categories').insert([{ name }]);
         refreshUI();
     }
 
@@ -69,21 +65,15 @@
         }
     }
 
-    // --- SUBTASK ACTIONS ---
     async function addSubTask(catId, parentId = null) {
         const text = prompt("Task description:");
         if (!text) return;
-        const { error } = await _supabase.from('subtasks').insert([{ 
-            category_id: catId, 
-            parent_id: parentId, 
-            task_text: text 
-        }]);
-        if (error) alert(error.message);
+        await _supabase.from('subtasks').insert([{ category_id: catId, parent_id: parentId, task_text: text }]);
         refreshUI();
     }
 
-    async function toggleComplete(id, currentStatus) {
-        await _supabase.from('subtasks').update({ is_completed: !currentStatus }).eq('id', id);
+    async function toggleComplete(id, status) {
+        await _supabase.from('subtasks').update({ is_completed: !status }).eq('id', id);
         refreshUI();
     }
 
@@ -101,15 +91,15 @@
         refreshUI();
     }
 
-    // --- NOTES ACTIONS ---
     async function saveNotes(catId) {
         const content = editors[catId].root.innerHTML;
-        const { error } = await _supabase.from('categories').update({ notes: content }).eq('id', catId);
-        if (!error) alert("Notes saved.");
+        await _supabase.from('categories').update({ notes: content }).eq('id', catId);
+        alert("Project notes saved.");
     }
 
     // --- CORE RENDERING ---
     async function refreshUI() {
+        console.log("Refreshing UI...");
         const { data: cats, error } = await _supabase.from('categories').select('*').order('created_at', { ascending: false });
         if (error) return;
 
@@ -135,7 +125,7 @@
                     <button class="btn btn-small" style="margin-top:10px; background:#fff;" onclick="saveNotes(${cat.id})">Save Project Notes</button>
                 </div>
                 <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
-                <div id="tasks-for-${cat.id}"></div>
+                <div id="tasks-for-${cat.id}">Loading...</div>
                 <button class="btn btn-main" style="margin-top:15px; font-size:12px;" onclick="addSubTask(${cat.id})">+ Add Main Task</button>
             `;
             root.appendChild(card);
@@ -157,32 +147,34 @@
             .order('created_at', { ascending: true });
 
         const container = document.getElementById(containerId);
-        if (!tasks || !container) return;
+        if (!container) return;
 
-        for (const task of tasks) {
-            const item = document.createElement('div');
-            item.className = 'subtask-item';
-            item.innerHTML = `
-                <input type="checkbox" ${task.is_completed ? 'checked' : ''} onchange="toggleComplete(${task.id}, ${task.is_completed})">
-                <span class="task-text ${task.is_completed ? 'completed' : ''}">${task.task_text}</span>
-                <button class="btn-small" onclick="addSubTask(${catId}, ${task.id})">+ Sub</button>
-                <button class="btn-small" onclick="promoteTask(${task.id}, ${task.parent_id})">↑ Up</button>
-                <button class="btn-small" style="color:red; border-color:rgba(255,0,0,0.2)" onclick="deleteSubTask(${task.id})">×</button>
-            `;
-            const subContainer = document.createElement('div');
-            subContainer.className = 'subtask-list';
-            subContainer.id = `children-of-${task.id}`;
-            
-            container.appendChild(item);
-            container.appendChild(subContainer);
-            
-            await renderTree(catId, task.id, subContainer.id);
+        if (parentId === null) container.innerHTML = ''; 
+
+        if (tasks && tasks.length > 0) {
+            for (const task of tasks) {
+                const item = document.createElement('div');
+                item.className = 'subtask-item';
+                item.innerHTML = `
+                    <input type="checkbox" ${task.is_completed ? 'checked' : ''} onchange="toggleComplete(${task.id}, ${task.is_completed})">
+                    <span class="task-text ${task.is_completed ? 'completed' : ''}">${task.task_text}</span>
+                    <button class="btn-small" onclick="addSubTask(${catId}, ${task.id})">+ Sub</button>
+                    <button class="btn-small" onclick="promoteTask(${task.id}, ${task.parent_id})">↑ Up</button>
+                    <button class="btn-small" style="color:red" onclick="deleteSubTask(${task.id})">×</button>
+                `;
+                const subContainer = document.createElement('div');
+                subContainer.className = 'subtask-list';
+                subContainer.id = `children-of-${task.id}`;
+                container.appendChild(item);
+                container.appendChild(subContainer);
+                await renderTree(catId, task.id, subContainer.id);
+            }
+        } else if (parentId === null) {
+            container.innerHTML = '<p style="font-size:12px; color:#aaa;">No tasks yet.</p>';
         }
     }
 
-    // Realtime Sync
     _supabase.channel('db-changes').on('postgres_changes', { event: '*', schema: 'public' }, () => refreshUI()).subscribe();
-
     refreshUI();
 </script>
 </body>
