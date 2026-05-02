@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strategic Task Manager | Inline Editing</title>
+    <title>Strategic Task Manager | Pro UX</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
@@ -24,9 +24,25 @@
         /* Task Rows & Inline Editing */
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
         #task-items-container { flex: 1; padding: 10px 25px; overflow-y: auto; }
-        .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
-        .editable-text { flex: 1; outline: none; border: 1px solid transparent; padding: 2px 4px; border-radius: 2px; transition: 0.2s; }
-        .editable-text:focus { border-color: var(--main-blue); background: #f0f4ff; color: #000; cursor: text; }
+        
+        .task-row { 
+            background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; 
+            border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: pointer; 
+        }
+
+        /* UPDATED: Text box width restricted to content */
+        .editable-text { 
+            width: fit-content; 
+            min-width: 20px;
+            max-width: 80%;
+            outline: none; 
+            border: 1px solid transparent; 
+            padding: 2px 6px; 
+            border-radius: 2px; 
+            transition: 0.2s;
+            cursor: text;
+        }
+        .editable-text:focus { border-color: var(--main-blue); background: #f0f4ff; color: #000; }
         
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
@@ -37,13 +53,15 @@
         .detail-section { background: white; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px; padding: 4px 0; }
         .detail-item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; font-size: 14px; color: #444; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
         
-        .substep-row { display: flex; align-items: center; gap: 12px; padding: 8px 20px; border-bottom: 1px solid #f0f0f0; background: white; }
+        .substep-row { display: flex; align-items: center; gap: 12px; padding: 8px 20px; border-bottom: 1px solid #f0f0f0; background: white; cursor: pointer; }
 
         #editor-wrapper { background: white; border: 1px solid var(--border); border-radius: 4px; margin-top: 10px; }
         #notes-editor { height: 150px; border: none; }
 
         .white-input { width: 100%; padding: 14px 16px; background: white; border: none; color: #333; font-size: 14px; outline: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); box-sizing: border-box; }
         .drag-handle { cursor: grab; color: #ccc; font-size: 18px; }
+        .delete-btn { border:none; background:none; cursor:pointer; margin-left: auto; color: #ccc; }
+        .delete-btn:hover { color: red; }
     </style>
 </head>
 <body>
@@ -78,12 +96,10 @@
                 <div id="sub-steps-list"></div>
                 <div class="detail-item" style="color:var(--main-blue); font-weight:600;" onclick="promptAddStep()">+ Add step</div>
             </div>
-
             <div class="detail-section">
                 <div class="detail-item">⏰ Remind me: <input type="datetime-local" id="remind-at" onchange="updateTaskField('remind_at', this.value)"></div>
                 <div class="detail-item">📅 Due date: <input type="date" id="due-at" onchange="updateTaskField('due_at', this.value)"></div>
             </div>
-
             <div id="editor-wrapper"><div id="notes-editor"></div></div>
             <button onclick="saveNotes()" style="margin-top:10px; cursor:pointer; padding:5px 10px; background:white; border:1px solid #ccc; border-radius:4px;">Save Notes</button>
         </div>
@@ -96,13 +112,10 @@
 
     let currentCategoryId = null, currentTaskId = null, quill = null;
 
-    // --- Inline Amendment Logic ---
     async function updateTaskTextFromInline(id, element) {
         const newText = element.innerText.trim();
-        if (!newText) return refreshTasks(); // Don't allow empty
-        const { error } = await _supabase.from('subtasks').update({ task_text: newText }).eq('id', id);
-        if (error) console.error(error);
-        // If it's the detail pane title, we update the center list too
+        if (!newText) return refreshTasks();
+        await _supabase.from('subtasks').update({ task_text: newText }).eq('id', id);
         if (id === currentTaskId) refreshTasks();
     }
 
@@ -129,20 +142,26 @@
         const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null).order('position', { ascending: true });
         const container = document.getElementById('task-items-container');
         container.innerHTML = data.map(t => `
-            <div class="task-row" data-id="${t.id}" onclick="if(event.target.classList.contains('task-row')) openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">
+            <div class="task-row" data-id="${t.id}" onclick="handleRowClick(event, ${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">
                 <div class="drag-handle">⋮⋮</div>
-                <div class="circle-check ${t.is_completed ? 'checked' : ''}"></div>
-                <div class="editable-text" contenteditable="true" onblur="updateTaskTextFromInline(${t.id}, this)" onkeypress="if(event.key==='Enter'){this.blur(); return false;}">${t.task_text}</div>
-                <button onclick="deleteTask(${t.id})" style="border:none; background:none; cursor:pointer;">×</button>
+                <div class="circle-check ${t.is_completed ? 'checked' : ''}" onclick="toggleCheck(${t.id}, ${t.is_completed}, event)"></div>
+                <div class="editable-text" contenteditable="true" onblur="updateTaskTextFromInline(${t.id}, this)" onkeypress="if(event.key==='Enter'){this.blur(); return false;}" onclick="event.stopPropagation()">${t.task_text}</div>
+                <button class="delete-btn" onclick="deleteTask(${t.id}, event)">×</button>
             </div>
         `).join('');
         initSortable(container);
     }
 
+    // Logic to distinguish between editing text and selecting the row
+    function handleRowClick(event, id, title) {
+        if (!event.target.classList.contains('editable-text') && !event.target.classList.contains('circle-check')) {
+            openDetails(id, title);
+        }
+    }
+
     async function openDetails(id, title) {
         currentTaskId = id;
-        const titleEl = document.getElementById('detail-task-title');
-        titleEl.innerText = title;
+        document.getElementById('detail-task-title').innerText = title;
         document.getElementById('detail-pane').style.display = 'flex';
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if (quill) quill.root.innerHTML = data.notes || '';
@@ -156,23 +175,24 @@
         const list = document.getElementById('sub-steps-list');
         list.setAttribute('data-parent-id', currentTaskId);
         list.innerHTML = data.map(s => `
-            <div class="substep-row" data-id="${s.id}">
+            <div class="substep-row" data-id="${s.id}" onclick="handleRowClick(event, ${s.id}, '${s.task_text.replace(/'/g, "\\'")}')">
                 <div class="drag-handle">⋮⋮</div>
-                <div class="circle-check ${s.is_completed ? 'checked' : ''}"></div>
-                <div class="editable-text" contenteditable="true" onblur="updateTaskTextFromInline(${s.id}, this)" onkeypress="if(event.key==='Enter'){this.blur(); return false;}">${s.task_text}</div>
-                <button onclick="deleteTask(${s.id})" style="border:none; background:none; cursor:pointer;">×</button>
+                <div class="circle-check ${s.is_completed ? 'checked' : ''}" onclick="toggleCheck(${s.id}, ${s.is_completed}, event)"></div>
+                <div class="editable-text" contenteditable="true" onblur="updateTaskTextFromInline(${s.id}, this)" onkeypress="if(event.key==='Enter'){this.blur(); return false;}" onclick="event.stopPropagation()">${s.task_text}</div>
+                <button class="delete-btn" onclick="deleteTask(${s.id}, event)">×</button>
             </div>
         `).join('');
         initSortable(list);
     }
 
-    // --- Standard Helpers ---
+    // Standard Helpers
     quill = new Quill('#notes-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }]] } });
     async function saveNotes() { await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Notes saved."); }
     async function updateTaskField(f, v) { await _supabase.from('subtasks').update({ [f]: v }).eq('id', currentTaskId); }
-    async function deleteTask(id) { if(confirm("Delete?")) { await _supabase.from('subtasks').delete().eq('id', id); refreshTasks(); closeDetails(); } }
-    async function handleNewTask(e) { if(e.key === 'Enter') { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: e.target.value }]); e.target.value=''; refreshTasks(); } }
-    async function promptAddStep() { const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, parent_id: currentTaskId, task_text: v }]); refreshSteps(); } }
+    async function deleteTask(id, e) { if(e) e.stopPropagation(); if(confirm("Delete?")) { await _supabase.from('subtasks').delete().eq('id', id); refreshTasks(); closeDetails(); } }
+    async function toggleCheck(id, status, e) { if(e) e.stopPropagation(); await _supabase.from('subtasks').update({ is_completed: !status }).eq('id', id); refreshTasks(); if(id === currentTaskId) refreshSteps(); }
+    async function handleNewTask(e) { if(e.key === 'Enter') { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: e.target.value, position: 0 }]); e.target.value=''; refreshTasks(); } }
+    async function promptAddStep() { const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, parent_id: currentTaskId, task_text: v, position: 0 }]); refreshSteps(); } }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
     function makeResizable(r, c) {
         let x=0, w=0; r.addEventListener('mousedown', (e)=>{ x=e.clientX; w=c.getBoundingClientRect().width;
