@@ -21,31 +21,62 @@
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
 
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
-        #task-items-container { flex: 1; padding: 10px 25px; overflow-y: auto; min-height: 100px; }
         
-        .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: default; border: 2px solid transparent; }
-        .task-row.active-task { border-color: rgba(255,255,255,0.5); font-weight: 900; background: #f0f4ff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        /* FIX: Ensure container allows children to reflow */
+        #task-items-container { 
+            flex: 1; 
+            padding: 10px 25px; 
+            overflow-y: auto; 
+            min-height: 200px; 
+            display: block !important; /* Forces block layout for better reflow */
+        }
+        
+        .task-row { 
+            background: white; 
+            color: #333; 
+            margin-bottom: 8px; /* Increased margin for clearer gaps */
+            padding: 12px 16px; 
+            border-radius: 4px; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            cursor: default; 
+            border: 1px solid #eee;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .active-task { border: 2px solid var(--main-blue) !important; font-weight: bold; }
 
+        /* FIX: High-Visibility Dragging Styles */
+        .sortable-ghost { 
+            opacity: 0.4; 
+            background: #cbd5e1 !important; 
+            border: 2px dashed #64748b !important;
+        }
+        .sortable-chosen { 
+            background: #f8fafc !important; 
+        }
+        .sortable-drag { 
+            opacity: 0.9; 
+            z-index: 1000 !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .drag-handle { cursor: grab; padding: 5px 10px; color: #cbd5e1; font-size: 18px; user-select: none; }
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
-        .editable-text { outline: none; padding: 2px 6px; border-radius: 2px; cursor: text; flex: 1; }
-        .red-arrow { font-size: 18px; color: var(--red); font-weight: bold; cursor: pointer; padding: 0 5px; user-select: none; }
+        .editable-text { outline: none; padding: 2px 6px; flex: 1; }
+        .red-arrow { font-size: 18px; color: var(--red); font-weight: bold; cursor: pointer; padding: 0 5px; }
 
         #global-actions { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: white; border-top: 1px solid var(--border); display: flex; align-items: center; z-index: 1000; }
-        .action-cell { height: 100%; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; }
-        .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
-        
-        /* Draggable visual cues */
-        .drag-handle { cursor: grab; padding: 10px; font-weight: bold; user-select: none; color: #ccc; }
-        .drag-handle:active { cursor: grabbing; }
-        .sortable-ghost { opacity: 0.1; background: var(--main-blue) !important; }
-        .sortable-chosen { background: #f0f4ff !important; border: 2px dashed var(--main-blue) !important; }
+        .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <div style="padding: 20px;"><input type="text" placeholder="Search" id="category-search" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;"></div>
+        <div style="padding: 20px;"><input type="text" placeholder="Search" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;"></div>
         <div id="category-list"></div>
     </div>
     <div class="resizer" id="resizer1"></div>
@@ -58,18 +89,18 @@
 
     <div id="detail-pane">
         <div class="detail-header">
-            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;" onblur="updateTaskText(currentTaskId, this)"></div>
+            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;"></div>
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px; margin-left: auto;">✕</button>
         </div>
         <div class="detail-scroll-area">
-            <div id="editor-wrapper"><div id="notes-editor"></div></div>
+            <div id="editor-wrapper"><div id="notes-editor" style="height: 250px;"></div></div>
         </div>
     </div>
 
     <div id="global-actions">
-        <div class="action-cell" style="width: 280px;"><button class="btn-bottom" style="color:var(--main-blue);" onclick="addCategory()">+ New List</button></div>
-        <div class="action-cell" style="width: 350px;"><button class="btn-bottom" style="color:var(--main-blue);" onclick="promptAddTask()">+ Add A Task</button></div>
-        <div class="action-cell" style="flex: 1; justify-content: flex-end;"><button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button></div>
+        <div style="width: 280px; padding-left: 20px;"><button class="btn-bottom" onclick="addCategory()">+ New List</button></div>
+        <div style="width: 350px; padding-left: 20px;"><button class="btn-bottom" onclick="promptAddTask()">+ Add A Task</button></div>
+        <div style="flex: 1; display: flex; justify-content: flex-end; padding-right: 20px;"><button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button></div>
     </div>
 
 <script>
@@ -105,25 +136,23 @@
                 <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
             </div>`).join('');
 
+        // FIX: Re-initialize Sortable with explicit swap logic
         Sortable.create(container, {
             handle: '.drag-handle',
-            animation: 150,
-            forceFallback: true,
+            animation: 250, // Slower animation to see the move
+            swapThreshold: 0.5, // Sensitivity for tasks moving out of the way
+            invertSwap: true,
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
+            forceFallback: true, // Crucial for notebook browsers
             onEnd: async function () {
-                // IMPORTANT: We do NOT call refreshTasks() here.
-                // We let the browser keep the item where it was dropped.
                 const rows = container.querySelectorAll('.task-row');
                 const updates = Array.from(rows).map((row, index) => {
-                    return _supabase
-                        .from('subtasks')
-                        .update({ position: index + 1 })
-                        .eq('id', row.getAttribute('data-id'));
+                    return _supabase.from('subtasks').update({ position: index + 1 }).eq('id', row.getAttribute('data-id'));
                 });
-                
                 await Promise.all(updates);
-                console.log("Database position sync complete.");
+                console.log("Sync complete");
             }
         });
     }
@@ -136,26 +165,11 @@
             </div>`).join('');
     }
 
-    // Individual field updates (text/check)
     async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function toggleCheck(id, s) { await _supabase.from('subtasks').update({ is_completed: !s }).eq('id', id); refreshTasks(); }
+    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
+    async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
     
-    async function promptAddTask() { 
-        const v = prompt("New Task:"); 
-        if(v) { 
-            await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); 
-            refreshTasks(); 
-        } 
-    }
-
-    async function addCategory() { 
-        const n = prompt("List name:"); 
-        if(n) { 
-            await _supabase.from('categories').insert([{ name: n }]); 
-            refreshCategories(); 
-        } 
-    }
-
     async function openDetails(id, title) {
         currentTaskId = id;
         document.querySelectorAll('.task-row').forEach(r => r.classList.remove('active-task'));
@@ -166,14 +180,9 @@
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) quill.root.innerHTML = data.notes || '';
     }
-
-    async function saveNotes() { 
-        if(!currentTaskId) return; 
-        await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); 
-        alert("Notes saved."); 
-    }
-
+    
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; refreshTasks(); }
+    async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Notes saved."); }
     
     refreshCategories();
 </script>
