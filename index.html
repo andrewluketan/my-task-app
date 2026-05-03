@@ -13,20 +13,16 @@
         :root { --sidebar-bg: #f3f4f6; --main-blue: #4b69ff; --border: #e5e7eb; --red: #dc2626; --text: #444; --ms-light-blue: #3b82f6; --ms-selected: #f3f9fe; --ms-brown: #964b00; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; display: flex; width: 100vw; height: 100vh; background: white; overflow: hidden; }
 
-        /* COLUMN WRAPPERS */
         #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
         #main-content { width: 350px; background: var(--main-blue); color: white; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; position: relative; }
         #detail-pane { flex: 1; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; overflow-y: auto; position: relative; }
 
-        /* FOOTER GAP BUFFER */
         #category-list, .task-list-container, .detail-scroll-area { padding-bottom: 120px !important; }
 
-        /* SIDEBAR FOLDERS */
         .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
         .my-day-folder { background: #eef2ff !important; color: #1e3a8a !important; font-weight: bold; border-left: 5px solid var(--main-blue); }
 
-        /* MIDDLE COLUMN TASK ROW (Fixed Red Arrow image_fe22e1.png) */
         .task-list-container { padding: 10px 25px; }
         .task-row { background: white; color: #333; margin-bottom: 8px; padding: 0 0 0 16px; border-radius: 4px; display: flex; align-items: center; gap: 10px; border: 1px solid #eee; position: relative; height: 52px; overflow: hidden; }
         .editable-content { flex: 1; outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
@@ -38,40 +34,32 @@
         }
         .red-arrow:hover { background: #fee2e2; }
 
-        /* DETAIL PANE SECTIONS (Microsoft Style) */
         .ms-section { background: white; border: 1px solid #eaeaea; border-radius: 6px; margin: 0 20px 10px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); overflow: hidden; }
         .ms-item { display: flex; align-items: center; gap: 15px; padding: 12px 18px; font-size: 14px; border-bottom: 1px solid #f6f6f6; color: #555; cursor: pointer; }
         .ms-item:last-child { border-bottom: none; }
         .ms-date-display { margin-left: auto; color: var(--ms-light-blue); font-weight: 600; font-size: 12px; }
 
-        /* RECURSIVE STEPS */
         .step-row-container { margin-bottom: 5px; }
         .step-row { display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: white; }
         .nested-step-group { margin-left: 30px; padding-top: 5px; border-left: 2px solid #eaeaea; padding-left: 10px; min-height: 5px; }
 
-        /* COMMON ELEMENTS */
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
         .drag-handle { cursor: grab; color: #ccc; font-size: 20px; padding: 5px; }
-        .sortable-ghost { opacity: 0.1; background: var(--main-blue) !important; }
 
-        /* CUSTOM REPEAT MODAL (image_fe3de0.png) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 20000; display: none; align-items: center; justify-content: center; }
         .ms-modal { background: white; width: 280px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
-        .custom-repeat-box { padding: 20px; }
-        .ms-input-num { width: 50px; padding: 8px; border: 1px solid #ddd; border-bottom: 2px solid var(--ms-brown); border-radius: 4px; text-align: center; font-size: 16px; }
-        .ms-select { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: white; }
+        
+        .ms-calendar { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; padding: 10px; }
+        .ms-day-cell { padding: 8px 0; cursor: pointer; border-radius: 4px; }
+        .ms-day-cell.selected { background: var(--ms-light-blue); color: white; }
+        .ms-day-cell.other-month { color: #ccc; }
 
-        /* REPEAT DROPDOWN MENU */
         .repeat-dropdown { position: absolute; background: white; border: 1px solid var(--border); border-radius: 4px; z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; min-width: 200px; top: 100%; left: 0; }
         .repeat-option { padding: 12px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f9fafb; display: flex; align-items: center; gap: 10px; }
-        .repeat-option:hover { background: #f3f4f6; }
 
-        /* FLOATING FOOTER */
         #global-actions { position: fixed; bottom: 0; left: 0; width: 100%; height: 65px; background: white; border-top: 2px solid var(--border); display: flex; align-items: center; z-index: 10000; }
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); flex: 1; }
-
-        @media (max-width: 900px) { body { overflow-x: auto; } #sidebar, #main-content { min-width: 280px; } #detail-pane { min-width: 320px; } }
     </style>
 </head>
 <body>
@@ -96,15 +84,15 @@
         <div class="detail-scroll-area">
             <div class="ms-section">
                 <div id="steps-forced-container"></div>
-                <div class="ms-item" style="color:var(--ms-light-blue); font-weight:bold;" onclick="addNestedStep()">➕ Next step</div>
+                <div class="ms-item" style="color:var(--ms-light-blue); font-weight:bold;" onclick="addNestedStep()"><span>➕</span> Next step</div>
             </div>
             <div class="ms-section">
                 <div class="ms-item" id="add-myday-btn" onclick="toggleMyDay(true)"><span>☀️</span> Add to My Day</div>
                 <div class="ms-item" id="remove-myday-btn" style="display:none; color:var(--ms-light-blue); background:var(--ms-selected);"><span>☀️</span> Added to My Day <button onclick="toggleMyDay(false)" style="border:none; background:none; cursor:pointer; margin-left:auto; color:#ccc; font-size:18px;">✕</button></div>
             </div>
             <div class="ms-section">
-                <div class="ms-item" onclick="alert('Date Modal Placeholder')"><span>⏰</span> Remind me <span id="remind-val" class="ms-date-display">None</span></div>
-                <div class="ms-item" onclick="alert('Date Modal Placeholder')"><span>📅</span> Add due date <span id="due-val" class="ms-date-display">None</span></div>
+                <div class="ms-item" onclick="openMsDateTimeModal('remind_at')"><span>⏰</span> Remind me <span id="remind-val" class="ms-date-display">None</span></div>
+                <div class="ms-item" onclick="openMsDateTimeModal('due_at')"><span>📅</span> Add due date <span id="due-val" class="ms-date-display">None</span></div>
                 <div class="ms-item" id="repeat-trigger" style="position:relative"><span>🔁</span> Repeat <span id="repeat-val" class="ms-date-display">None</span>
                     <div id="repeat-dropdown" class="repeat-dropdown">
                         <div class="repeat-option" onclick="setRepeat('Daily')">Daily</div>
@@ -113,6 +101,10 @@
                         <div class="repeat-option" onclick="openCustomRepeat()">Custom...</div>
                     </div>
                 </div>
+            </div>
+            <div class="ms-section">
+                <div class="ms-item" onclick="document.getElementById('file-input').click()"><span>📎</span> Add files <input type="file" id="file-input" multiple style="display:none" onchange="uploadFiles(this)"></div>
+                <div id="file-list-display" style="padding: 10px 18px;"></div>
             </div>
             <div class="ms-section" style="padding: 15px;"><div id="notes-editor" style="height:200px;"></div></div>
         </div>
@@ -124,137 +116,129 @@
         <button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button>
     </div>
 
-    <!-- CUSTOM REPEAT MODAL (image_fe3de0.png) -->
     <div id="custom-repeat-modal" class="modal-overlay">
-        <div class="ms-modal">
-            <div class="custom-repeat-box">
-                <div style="font-weight: 600; font-size: 16px;">Repeat every ...</div>
-                <div style="display:flex; gap:10px; align-items:center; margin:15px 0;">
-                    <input type="number" id="custom-repeat-num" class="ms-input-num" value="1">
-                    <select id="custom-repeat-freq" class="ms-select">
-                        <option value="days">days</option><option value="weeks">weeks</option><option value="months">months</option><option value="years">years</option>
-                    </select>
-                </div>
-                <div style="display:flex; gap:10px; margin-top:20px;">
-                    <button style="flex:1; padding:10px; border:1px solid #ddd; background:white; border-radius:4px;" onclick="closeCustomRepeat()">Cancel</button>
-                    <button style="flex:1; padding:10px; background:var(--ms-brown); color:white; border:none; border-radius:4px; font-weight:bold;" onclick="saveCustomRepeat()">Save</button>
-                </div>
-            </div>
+        <div class="ms-modal"><div style="padding:20px;"><div style="font-weight:600;">Repeat every ...</div>
+        <div style="display:flex; gap:10px; margin:15px 0;"><input type="number" id="custom-repeat-num" value="1" style="width:50px; padding:8px; border:1px solid #ddd; border-bottom:2px solid var(--ms-brown);">
+        <select id="custom-repeat-freq" style="flex:1; padding:8px; border:1px solid #ddd;"><option value="days">days</option><option value="weeks">weeks</option><option value="months">months</option><option value="years">years</option></select></div>
+        <div style="display:flex; gap:10px;"><button style="flex:1; padding:10px; border:1px solid #ddd; background:white; border-radius:4px;" onclick="closeCustomRepeat()">Cancel</button>
+        <button style="flex:1; padding:10px; background:var(--ms-brown); color:white; border:none; border-radius:4px; font-weight:bold;" onclick="saveCustomRepeat()">Save</button></div></div></div>
+    </div>
+
+    <div id="date-modal-overlay" class="modal-overlay">
+        <div class="ms-modal"><div style="padding:15px; font-weight:600; display:flex; justify-content:space-between;">May 2026 <div>▲ ▼</div></div>
+        <div class="ms-calendar" id="ms-calendar-grid">
+            <div style="color:#aaa; font-weight:bold;">Su</div><div style="color:#aaa; font-weight:bold;">Mo</div><div style="color:#aaa; font-weight:bold;">Tu</div><div style="color:#aaa; font-weight:bold;">We</div><div style="color:#aaa; font-weight:bold;">Th</div><div style="color:#aaa; font-weight:bold;">Fr</div><div style="color:#aaa; font-weight:bold;">Sa</div>
+            <div class="ms-day-cell other-month">26</div><div class="ms-day-cell other-month">27</div><div class="ms-day-cell other-month">28</div><div class="ms-day-cell other-month">29</div><div class="ms-day-cell other-month">30</div><div class="ms-day-cell">1</div><div class="ms-day-cell">2</div><div class="ms-day-cell selected">3</div><div class="ms-day-cell">4</div><div class="ms-day-cell">5</div>
         </div>
+        <div style="display:flex; justify-content:center; gap:5px; padding:15px; border-top:1px solid #f0f0f0;"><input type="number" value="11" style="width:40px; text-align:center;"> : <input type="number" value="33" style="width:40px; text-align:center;">
+        <div style="border:1px solid #ddd; display:flex; border-radius:4px;"><button style="padding:5px;">am</button><button style="padding:5px; background:#f0f0f0;">pm</button></div></div>
+        <div style="display:flex; padding:10px; gap:10px; border-top:1px solid #f0f0f0; background:#fafafa;"><button style="flex:1; padding:10px; border:1px solid #ddd; border-radius:4px;" onclick="closeMsDateTimeModal()">Cancel</button><button style="flex:1; padding:10px; background:var(--ms-brown); color:white; border:none; border-radius:4px;" onclick="saveMsDateTime()">Save</button></div></div>
     </div>
 
 <script>
     const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co'; 
     const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; 
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let currentCategoryId = null, currentTaskId = null, quill = null;
+    let currentCategoryId = null, currentTaskId = null, quill = null, targetDateTimeColumn = null;
 
     quill = new Quill('#notes-editor', { theme: 'snow', placeholder: 'Add note' });
 
-    // --- INITIALIZATION ---
     async function refreshCategories() {
         const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
         let html = `<div class="sidebar-item my-day-folder" id="my-day-btn" onclick="selectCategory('my-day', '☀️ My Day')">📋 My Day</div>`;
-        html += data.map(c => `<div class="sidebar-item" data-id="${c.id}" onclick="selectCategory(${c.id}, '${c.name}')">📋 ${c.name}</div>`).join('');
+        html += data.map(c => `<div class="sidebar-item" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">📋 ${c.name}</div>`).join('');
         document.getElementById('category-list').innerHTML = html;
+        refreshCategoriesActiveState();
     }
 
     async function selectCategory(id, name) { 
-        currentCategoryId = id; 
-        document.getElementById('task-list-header').innerText = name; 
-        document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-        if(id === 'my-day') document.getElementById('my-day-btn').classList.add('active');
-        refreshTasks(); closeDetails(); 
+        currentCategoryId = id; document.getElementById('task-list-header').innerText = name; 
+        refreshCategoriesActiveState(); refreshTasks(); closeDetails(); 
     }
 
-    // --- REPEAT LOGIC (image_fe3de0.png) ---
-    const repeatTrigger = document.getElementById('repeat-trigger');
-    const repeatDropdown = document.getElementById('repeat-dropdown');
-    repeatTrigger.onclick = (e) => { e.stopPropagation(); repeatDropdown.style.display = repeatDropdown.style.display === 'block' ? 'none' : 'block'; };
-
-    function setRepeat(val) {
-        document.getElementById('repeat-val').innerText = val;
-        _supabase.from('subtasks').update({ repeat_pattern: val }).eq('id', currentTaskId);
-        repeatDropdown.style.display = 'none';
-    }
-    function openCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'flex'; repeatDropdown.style.display = 'none'; }
-    function closeCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'none'; }
-    async function saveCustomRepeat() {
-        const pattern = `Every ${document.getElementById('custom-repeat-num').value} ${document.getElementById('custom-repeat-freq').value}`;
-        setRepeat(pattern); closeCustomRepeat();
+    function refreshCategoriesActiveState() {
+        document.querySelectorAll('.sidebar-item').forEach(el => {
+            el.classList.remove('active');
+            if (currentCategoryId === 'my-day' && el.id === 'my-day-btn') el.classList.add('active');
+        });
     }
 
-    // --- TASK RENDERING (RED ARROW FIX image_fe22e1.png) ---
     async function refreshTasks() {
         if (!currentCategoryId) return;
-        const query = currentCategoryId === 'my-day' ? _supabase.from('subtasks').select('*').eq('is_myday', true) : _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
-        const { data } = await query.order('position', { ascending: true });
-        
-        const container = document.getElementById('main-task-container');
-        container.innerHTML = data.map(t => `
-            <div class="task-row" data-id="${t.id}">
-                <div class="drag-handle">⋮⋮</div>
-                <div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div>
-                <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div>
-            </div>`).join('');
-        Sortable.create(container, { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
+        const q = currentCategoryId === 'my-day' ? _supabase.from('subtasks').select('*').eq('is_myday', true) : _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
+        const { data } = await q.order('position', { ascending: true });
+        document.getElementById('main-task-container').innerHTML = data.map(t => `
+            <div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div></div>`).join('');
+        Sortable.create(document.getElementById('main-task-container'), { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
     }
 
     async function openDetails(id, title) {
-        currentTaskId = id;
-        document.getElementById('detail-task-title').innerText = title;
-        document.getElementById('detail-pane').style.display = 'flex';
+        currentTaskId = id; document.getElementById('detail-task-title').innerText = title; document.getElementById('detail-pane').style.display = 'flex';
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) {
             quill.root.innerHTML = data.notes || '';
             document.getElementById('add-myday-btn').style.display = data.is_myday ? 'none' : 'flex';
             document.getElementById('remove-myday-btn').style.display = data.is_myday ? 'flex' : 'none';
+            document.getElementById('remind-val').innerText = data.remind_at ? 'Sun, May 3, 11:33 pm' : 'None';
+            document.getElementById('due-val').innerText = data.due_at ? 'Sun, May 3, 11:33 pm' : 'None';
             document.getElementById('repeat-val').innerText = data.repeat_pattern || 'None';
-            refreshRecursiveSteps();
+            refreshRecursiveSteps(); refreshFiles();
         }
     }
 
     async function refreshRecursiveSteps() {
         const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId !== 'my-day' ? currentCategoryId : null).order('position', { ascending: true });
-        const container = document.getElementById('steps-forced-container');
-        container.innerHTML = '';
-        renderSteps(data, currentTaskId, container);
-        document.querySelectorAll('#steps-forced-container, .nested-step-group').forEach(g => {
-            Sortable.create(g, { group: 'steps', animation: 150, handle: '.drag-handle', onEnd: syncRecursivePositions });
-        });
+        const c = document.getElementById('steps-forced-container'); c.innerHTML = ''; renderSteps(data, currentTaskId, c);
+        document.querySelectorAll('#steps-forced-container, .nested-step-group').forEach(g => Sortable.create(g, { group: 'steps', animation: 150, handle: '.drag-handle', onEnd: syncRecursivePositions }));
     }
 
     function renderSteps(all, pid, target) {
         all.filter(t => t.parent_id === pid).forEach(t => {
-            const div = document.createElement('div');
-            div.className = 'step-row-container'; div.setAttribute('data-id', t.id);
-            div.innerHTML = `<div class="step-row"><div class="drag-handle">⋮⋮</div><div class="circle-check"></div><div style="flex:1" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div></div><div class="nested-step-group" data-parent="${t.id}"></div>`;
-            target.appendChild(div);
-            renderSteps(all, t.id, div.querySelector('.nested-step-group'));
+            const d = document.createElement('div'); d.className = 'step-row-container'; d.setAttribute('data-id', t.id);
+            d.innerHTML = `<div class="step-row"><div class="drag-handle">⋮⋮</div><div class="circle-check"></div><div style="flex:1" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div></div><div class="nested-step-group" data-parent="${t.id}"></div>`;
+            target.appendChild(d); renderSteps(all, t.id, d.querySelector('.nested-step-group'));
         });
     }
 
-    // --- SYSTEM ---
-    async function syncPositions(e) {
-        const updates = Array.from(e.from.querySelectorAll(':scope > [data-id]')).map((row, i) => _supabase.from('subtasks').update({ position: i + 1 }).eq('id', row.getAttribute('data-id')));
-        await Promise.all(updates);
+    const repeatTrigger = document.getElementById('repeat-trigger');
+    const repeatDropdown = document.getElementById('repeat-dropdown');
+    repeatTrigger.onclick = (e) => { e.stopPropagation(); repeatDropdown.style.display = repeatDropdown.style.display === 'block' ? 'none' : 'block'; };
+
+    function setRepeat(val) { document.getElementById('repeat-val').innerText = val; _supabase.from('subtasks').update({ repeat_pattern: val }).eq('id', currentTaskId); repeatDropdown.style.display = 'none'; }
+    function openCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'flex'; repeatDropdown.style.display = 'none'; }
+    function closeCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'none'; }
+    function saveCustomRepeat() { const p = `Every ${document.getElementById('custom-repeat-num').value} ${document.getElementById('custom-repeat-freq').value}`; setRepeat(p); closeCustomRepeat(); }
+
+    function openMsDateTimeModal(c) { targetDateTimeColumn = c; document.getElementById('date-modal-overlay').style.display = 'flex'; }
+    function closeMsDateTimeModal() { document.getElementById('date-modal-overlay').style.display = 'none'; }
+    async function saveMsDateTime() { await _supabase.from('subtasks').update({ [targetDateTimeColumn]: '2026-05-03 23:33:00' }).eq('id', currentTaskId); document.getElementById(targetDateTimeColumn === 'remind_at' ? 'remind-val' : 'due-val').innerText = 'Sun, May 3, 11:33 pm'; closeMsDateTimeModal(); }
+
+    async function uploadFiles(input) {
+        for (const file of input.files) {
+            const p = `task_${currentTaskId}/${Date.now()}_${file.name}`;
+            const { error } = await _supabase.storage.from('task-attachments').upload(p, file);
+            if(!error) await _supabase.from('task_files').insert([{ task_id: currentTaskId, file_name: file.name, file_path: p }]);
+        }
+        refreshFiles();
     }
-    async function syncRecursivePositions(e) {
-        const pid = e.to.getAttribute('data-parent') || currentTaskId;
-        const updates = Array.from(e.to.querySelectorAll(':scope > .step-row-container')).map((row, i) => _supabase.from('subtasks').update({ position: i + 1, parent_id: pid }).eq('id', row.getAttribute('data-id')));
-        await Promise.all(updates);
+    async function refreshFiles() {
+        const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
+        document.getElementById('file-list-display').innerHTML = data.map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
     }
-    async function toggleMyDay(v) { await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); }
+    async function deleteFile(id, path) { await _supabase.storage.from('task-attachments').remove([path]); await _supabase.from('task_files').delete().eq('id', id); refreshFiles(); }
+
+    async function toggleMyDay(v) { await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); if(currentCategoryId==='my-day') refreshTasks(); }
     async function updateText(id, el) { if(id) await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function saveNotes() { await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Saved"); }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
-    async function addCategory() { const n = prompt("Name:"); if(n) await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); }
-    async function promptAddTask() { const v = prompt("Task:"); if(v) await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); }
-    async function addNestedStep() { const v = prompt("Step:"); if(v) await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshRecursiveSteps(); }
+    async function syncPositions(e) { const updates = Array.from(e.from.querySelectorAll(':scope > [data-id]')).map((row, i) => _supabase.from('subtasks').update({ position: i + 1 }).eq('id', row.getAttribute('data-id'))); await Promise.all(updates); }
+    async function syncRecursivePositions(e) { const pid = e.to.getAttribute('data-parent') || currentTaskId; const updates = Array.from(e.to.querySelectorAll(':scope > .step-row-container')).map((row, i) => _supabase.from('subtasks').update({ position: i + 1, parent_id: pid }).eq('id', row.getAttribute('data-id'))); await Promise.all(updates); }
+    async function addCategory() { const n = prompt("Name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
+    async function promptAddTask() { const v = prompt("Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshTasks(); } }
+    async function addNestedStep() { const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshRecursiveSteps(); } }
 
     refreshCategories();
-    window.onclick = () => repeatDropdown.style.display = 'none';
+    window.onclick = () => { repeatDropdown.style.display = 'none'; };
 </script>
 </body>
 </html>
-```[cite: 1]
