@@ -35,6 +35,7 @@
         .action-cell { height: 100%; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; }
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
         
+        /* Draggable visual cues */
         .drag-handle { cursor: grab; padding: 10px; font-weight: bold; user-select: none; color: #ccc; }
         .drag-handle:active { cursor: grabbing; }
         .sortable-ghost { opacity: 0.1; background: var(--main-blue) !important; }
@@ -111,7 +112,8 @@
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             onEnd: async function () {
-                // UI stays in place. We calculate and save the new positions silently.
+                // IMPORTANT: We do NOT call refreshTasks() here.
+                // We let the browser keep the item where it was dropped.
                 const rows = container.querySelectorAll('.task-row');
                 const updates = Array.from(rows).map((row, index) => {
                     return _supabase
@@ -119,8 +121,9 @@
                         .update({ position: index + 1 })
                         .eq('id', row.getAttribute('data-id'));
                 });
+                
                 await Promise.all(updates);
-                console.log("Background sync complete.");
+                console.log("Database position sync complete.");
             }
         });
     }
@@ -133,10 +136,26 @@
             </div>`).join('');
     }
 
+    // Individual field updates (text/check)
     async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function toggleCheck(id, s) { await _supabase.from('subtasks').update({ is_completed: !s }).eq('id', id); refreshTasks(); }
-    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
-    async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
+    
+    async function promptAddTask() { 
+        const v = prompt("New Task:"); 
+        if(v) { 
+            await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); 
+            refreshTasks(); 
+        } 
+    }
+
+    async function addCategory() { 
+        const n = prompt("List name:"); 
+        if(n) { 
+            await _supabase.from('categories').insert([{ name: n }]); 
+            refreshCategories(); 
+        } 
+    }
+
     async function openDetails(id, title) {
         currentTaskId = id;
         document.querySelectorAll('.task-row').forEach(r => r.classList.remove('active-task'));
@@ -147,8 +166,14 @@
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) quill.root.innerHTML = data.notes || '';
     }
+
+    async function saveNotes() { 
+        if(!currentTaskId) return; 
+        await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); 
+        alert("Notes saved."); 
+    }
+
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; refreshTasks(); }
-    async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Notes saved."); }
     
     refreshCategories();
 </script>
