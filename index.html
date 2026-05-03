@@ -12,70 +12,64 @@
     <style>
         :root { --sidebar-bg: #f3f4f6; --main-blue: #4b69ff; --border: #e5e7eb; --red: #dc2626; --text: #444; }
         
-        /* FIX: Force the body to take exactly 100% of the visual viewport */
+        /* FIX: Ensure the main container doesn't collapse or freeze */
         body { 
             font-family: 'Segoe UI', system-ui, sans-serif; 
             margin: 0; 
             display: flex; 
+            width: 100vw;
             height: 100vh; 
-            height: -webkit-fill-available; /* Fix for mobile Safari */
             background: white; 
             overflow: hidden; 
-            font-size: 14px; 
         }
 
-        /* SIDEBAR & MAIN CONTENT BUFFERS */
-        #sidebar, #main-content, #detail-pane { 
-            padding-bottom: 70px !important; /* Ensures content doesn't get stuck behind the floating bar */
-            box-sizing: border-box;
-        }
+        /* SIDEBAR, MAIN CONTENT, & DETAIL PANE */
+        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; padding-bottom: 80px; }
+        #main-content { width: 350px; background: var(--main-blue); color: white; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; padding-bottom: 80px; position: relative; }
+        #detail-pane { flex: 1; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; overflow-y: auto; padding-bottom: 80px; }
 
-        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
-        #main-content { width: 350px; display: flex; flex-direction: column; background: var(--main-blue); color: white; border-right: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; position: relative; }
-        #detail-pane { flex: 1; min-width: 300px; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; overflow-y: auto;}
-
-        .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; }
+        .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
 
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
-        #task-items-container { flex: 1; padding: 10px 25px; overflow-y: auto; display: block !important; }
+        #task-items-container { padding: 10px 25px; display: block !important; }
         
         .task-row { 
             background: white; color: #333; margin-bottom: 12px; padding: 12px 16px; 
             border-radius: 4px; display: flex; align-items: center; gap: 12px; border: 1px solid #eee;
-            position: relative; user-select: none; -webkit-user-drag: none;
+            position: relative; user-select: none;
         }
 
-        /* FIX: THE FLOATING FOOTER */
+        /* FLOATING FOOTER FIX */
         #global-actions { 
             position: fixed; 
             bottom: 0; 
             left: 0; 
             width: 100%; 
-            height: 60px; 
+            height: 65px; 
             background: white; 
-            border-top: 1px solid var(--border); 
+            border-top: 2px solid var(--border); 
             display: flex; 
             align-items: center; 
-            justify-content: space-between;
-            z-index: 9999; /* Higher than everything else */
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05); /* Soft shadow to show it's floating */
+            z-index: 10000;
+            box-shadow: 0 -3px 15px rgba(0,0,0,0.1);
         }
 
-        .action-cell { flex: 1; display: flex; align-items: center; justify-content: center; height: 100%; }
-        .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 13px; color: var(--main-blue); white-space: nowrap; }
+        .action-cell { flex: 1; display: flex; align-items: center; justify-content: center; border-right: 1px solid #eee; }
+        .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); }
 
+        /* UI ELEMENTS */
         .drag-handle { cursor: grab; padding: 10px; color: #ccc; font-size: 20px; }
-        .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; }
+        .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
         .editable-text { outline: none; padding: 2px 6px; flex: 1; }
         .red-arrow { font-size: 18px; color: var(--red); font-weight: bold; cursor: pointer; }
 
-        /* MOBILE OPTIMIZATION */
-        @media (max-width: 768px) {
-            #sidebar, #main-content { width: 100%; }
-            #resizer1, #resizer2 { display: none; }
-            .btn-bottom { font-size: 11px; } /* Smaller text for tight mobile screens */
+        /* MOBILE FIX: Allow horizontal scrolling if screen is too small */
+        @media (max-width: 900px) {
+            body { overflow-x: auto; }
+            #sidebar, #main-content { min-width: 280px; }
+            #detail-pane { min-width: 320px; }
         }
     </style>
 </head>
@@ -87,23 +81,22 @@
     </div>
 
     <div id="main-content">
-        <div id="task-list-header">Tasks</div>
+        <div id="task-list-header">Select a List</div>
         <div id="task-items-container"></div>
     </div>
 
     <div id="detail-pane">
-        <div class="detail-header" style="padding:20px; display:flex; align-items:center; gap:10px;">
+        <div class="detail-header" style="padding:20px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #eee;">
             <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:18px; font-weight:bold;"></div>
-            <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px; margin-left:auto;">✕</button>
+            <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:24px; margin-left:auto;">✕</button>
         </div>
-        <div id="editor-wrapper" style="padding:0 20px;"><div id="notes-editor" style="height:200px; background:white;"></div></div>
+        <div id="editor-wrapper" style="padding:20px;"><div id="notes-editor" style="height:300px; background:white;"></div></div>
     </div>
 
-    <!-- FLOATING FOOTER -->
     <div id="global-actions">
         <div class="action-cell"><button class="btn-bottom" onclick="addCategory()">+ New List</button></div>
         <div class="action-cell"><button class="btn-bottom" onclick="promptAddTask()">+ Add Task</button></div>
-        <div class="action-cell"><button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button></div>
+        <div class="action-cell" style="border-right:none;"><button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button></div>
     </div>
 
 <script>
@@ -119,6 +112,7 @@
         document.getElementById('task-list-header').innerText = name;
         refreshTasks(); 
         refreshCategories(); 
+        closeDetails();
     }
 
     async function refreshTasks() {
@@ -156,7 +150,11 @@
 
     async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function toggleCheck(id, s) { await _supabase.from('subtasks').update({ is_completed: !s }).eq('id', id); refreshTasks(); }
-    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
+    async function promptAddTask() { 
+        if(!currentCategoryId) { alert("Please select a list first."); return; }
+        const v = prompt("New Task:"); 
+        if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } 
+    }
     async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
     
     async function openDetails(id, title) {
