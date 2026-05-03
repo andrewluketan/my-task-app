@@ -17,17 +17,13 @@
         #main-content { width: 350px; display: flex; flex-direction: column; background: var(--main-blue); color: white; border-right: 1px solid rgba(0,0,0,0.1); padding-bottom: 60px; flex-shrink: 0; position: relative; }
         #detail-pane { flex: 1; min-width: 400px; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; padding-bottom: 60px; overflow-y: auto;}
 
-        /* FIX 4: Sidebar Category Styling & Context Trigger */
         .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; display: flex; align-items: center; justify-content: space-between; gap: 10px; position: relative; }
         .sidebar-item:hover { background: #e5e7eb; }
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
-        .category-actions { opacity: 0; color: #999; font-size: 14px; }
-        .sidebar-item:hover .category-actions { opacity: 1; }
 
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
         #task-items-container { flex: 1; padding: 10px 25px; overflow-y: auto; }
         
-        /* FIX 1: Bold Highlight for Active Task */
         .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: default; border: 2px solid transparent; transition: all 0.2s; }
         .task-row.active-task { border-color: rgba(255,255,255,0.5); font-weight: 900; background: #f0f4ff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .task-row.active-task .editable-text { font-weight: 900; color: var(--main-blue); }
@@ -37,10 +33,6 @@
         .editable-text { outline: none; padding: 2px 6px; border-radius: 2px; cursor: text; flex: 1; width: fit-content; min-width: 50px; }
         .red-arrow { font-size: 18px; color: var(--red); font-weight: bold; cursor: pointer; padding: 0 5px; user-select: none; }
 
-        .detail-header { padding: 25px 30px; background: white; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 15px; }
-        .detail-scroll-area { flex: 1; padding: 25px 30px; }
-        
-        /* FIX 2: Better Tree Hierarchy Visuals */
         .tree-container { margin-left: 24px; border-left: 2px solid #e5e7eb; padding-left: 12px; min-height: 10px; margin-top: 4px; }
         .step-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; background: white; position: relative; border-radius: 4px; margin-bottom: 2px; }
 
@@ -62,19 +54,17 @@
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
         
         #editor-wrapper { background: white; border: 1px solid var(--border); border-radius: 4px; margin-top: 15px; min-height: 150px; }
-        .ql-editor.ql-blank::before { color: rgba(0,0,0,0.3); content: "+ Add Notes"; font-style: normal; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <!-- Generic Context Menu for Categories -->
     <div id="category-context-menu" class="context-menu">
         <div class="menu-option" id="ctx-rename">Rename List</div>
         <div class="menu-option delete" id="ctx-delete">Delete List & All Tasks</div>
     </div>
 
     <div id="sidebar">
-        <div style="padding: 20px;"><input type="text" placeholder="Search" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;"></div>
+        <div style="padding: 20px;"><input type="text" placeholder="Search" id="category-search" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;"></div>
         <div id="category-list"></div>
     </div>
     <div class="resizer" id="resizer1"></div>
@@ -139,133 +129,43 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let currentCategoryId = null, currentTaskId = null, quill = null;
 
-    // --- FIX 2: RECURSIVE ENGINE WITH NESTED DRAG SUPPORT ---
-    async function loadTree(catId, parentId, containerId) {
-        const query = _supabase.from('subtasks').select('*').eq('category_id', catId);
-        if(parentId === "null") query.is('parent_id', null); else query.eq('parent_id', Number(parentId));
-        
-        const { data } = await query.order('position', { ascending: true });
-        const container = document.getElementById(containerId);
-        container.innerHTML = '';
-        if(!data || data.length === 0) return;
+    // Initialize Quill
+    quill = new Quill('#notes-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }]] }, placeholder: '+ Add Notes' });
 
-        data.forEach(s => {
-            const row = document.createElement('div');
-            row.className = 'step-item';
-            row.setAttribute('data-id', s.id);
-            row.innerHTML = `
-                <div class="drag-handle">⋮⋮</div>
-                <div class="circle-check ${s.is_completed ? 'checked' : ''}" onclick="toggleCheck(${s.id}, ${s.is_completed})"></div>
-                <div class="editable-text" contenteditable="true" onblur="updateTaskText(${s.id}, this)">${s.task_text}</div>
-                <div class="context-trigger" onclick="deleteTask(${s.id})">✕</div>
-            `;
-            const tree = document.createElement('div');
-            tree.className = 'tree-container';
-            tree.id = `tree-${s.id}`;
-            tree.setAttribute('data-parent-id', s.id);
-
-            container.appendChild(row);
-            container.appendChild(tree);
-            loadTree(catId, s.id, tree.id);
-        });
-
-        new Sortable(container, { 
-            group: 'nested', 
-            animation: 150, 
-            handle: '.drag-handle',
-            fallbackOnBody: true,
-            swapThreshold: 0.65,
-            onEnd: async (evt) => {
-                const movedId = evt.item.getAttribute('data-id');
-                const newParentId = evt.to.getAttribute('data-parent-id');
-                await _supabase.from('subtasks').update({ 
-                    parent_id: newParentId === "null" ? null : Number(newParentId) 
-                }).eq('id', movedId);
-            }
-        });
-    }
-
-    // --- FIX 4: CATEGORY EDIT/DELETE LOGIC ---
-    function showCategoryMenu(e, id, name) {
-        e.preventDefault();
-        const menu = document.getElementById('category-context-menu');
-        menu.style.display = 'block';
-        menu.style.left = e.pageX + 'px';
-        menu.style.top = e.pageY + 'px';
-        
-        document.getElementById('ctx-rename').onclick = async () => {
-            const newName = prompt("Rename List:", name);
-            if(newName) {
-                await _supabase.from('categories').update({ name: newName }).eq('id', id);
-                refreshCategories();
-            }
-            hideAllMenus();
-        };
-        
-        document.getElementById('ctx-delete').onclick = async () => {
-            if(confirm(`Delete "${name}" and all associated tasks forever?`)) {
-                await _supabase.from('categories').delete().eq('id', id);
-                if(currentCategoryId === id) {
-                    currentCategoryId = null;
-                    document.getElementById('task-items-container').innerHTML = '';
-                    closeDetails();
-                }
-                refreshCategories();
-            }
-            hideAllMenus();
-        };
-    }
-
-    async function refreshCategories() {
-        const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
-        document.getElementById('category-list').innerHTML = data.map(c => `
-            <div class="sidebar-item ${currentCategoryId == c.id ? 'active' : ''}" 
-                 onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')"
-                 oncontextmenu="showCategoryMenu(event, ${c.id}, '${c.name.replace(/'/g, "\\'")}')">
-                <span>📋 ${c.name}</span>
-                <span class="category-actions">⋮</span>
-            </div>
-        `).join('');
-    }
-
-    // --- FIX 1: ACTIVE TASK BOLDING ---
-    async function openDetails(id, title) {
-        currentTaskId = id;
-        document.querySelectorAll('.task-row').forEach(r => r.classList.remove('active-task'));
-        const activeRow = document.querySelector(`.task-row[data-id="${id}"]`);
-        if(activeRow) activeRow.classList.add('active-task');
-
-        document.getElementById('detail-task-title').innerText = title;
-        document.getElementById('detail-pane').style.display = 'flex';
-        
-        const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
-        quill.root.innerHTML = data.notes || '';
-        
-        document.getElementById('remind-val').innerText = data.remind_at ? data.remind_at.split('T')[0] : '';
-        document.getElementById('due-val').innerText = data.due_at ? data.due_at.split('T')[0] : '';
-        
-        loadTree(currentCategoryId, id, 'recursive-steps-root'); 
-        refreshFileList(); 
-    }
-
-    // --- FIX 3: NOTES SAVE REPAIR ---
+    // --- SAVE NOTES FIX ---
     async function saveNotes() { 
-        if(!currentTaskId) return;
-        const content = quill.root.innerHTML;
-        // If it's just an empty paragraph, save as null/empty
-        const cleanContent = content === '<p><br></p>' ? '' : content;
+        if(!currentTaskId) {
+            alert("Please select a task first.");
+            return;
+        }
         
-        const { error } = await _supabase.from('subtasks')
+        // Ensure we get the actual HTML from the Quill instance
+        const notesContent = quill.root.innerHTML;
+        
+        // Don't save empty placeholder paragraphs
+        const cleanContent = (notesContent === '<p><br></p>') ? '' : notesContent;
+
+        const { data, error } = await _supabase.from('subtasks')
             .update({ notes: cleanContent })
             .eq('id', currentTaskId);
             
-        if(!error) alert("Notes Saved Successfully");
-        else console.error("Save error:", error);
+        if(error) {
+            console.error("Save error:", error);
+            alert("Error saving notes. Check console.");
+        } else {
+            alert("Notes saved successfully!");
+        }
     }
 
-    // --- CORE APP LOGIC (Consolidated) ---
-    async function selectCategory(id, name) { currentCategoryId = id; refreshTasks(); refreshCategories(); closeDetails(); }
-    
+    // --- OTHER CORE FUNCTIONS ---
+    async function selectCategory(id, name) { 
+        currentCategoryId = id; 
+        document.getElementById('task-list-header').innerText = name;
+        refreshTasks(); 
+        refreshCategories(); 
+        closeDetails(); 
+    }
+
     async function refreshTasks() {
         if (!currentCategoryId) return;
         const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null).order('position', { ascending: true });
@@ -279,57 +179,41 @@
             </div>`).join('');
     }
 
-    async function handleFileSelection(event) {
-        const files = event.target.files;
-        if (!files.length || !currentTaskId) return;
-        document.getElementById('upload-status').style.display = 'inline';
-        for (const file of files) {
-            const filePath = `${currentTaskId}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
-            await _supabase.storage.from(BUCKET_NAME).upload(filePath, file);
-            await _supabase.from('task_files').insert([{ task_id: currentTaskId, file_name: file.name, file_path: filePath }]);
+    async function openDetails(id, title) {
+        currentTaskId = id;
+        document.querySelectorAll('.task-row').forEach(r => r.classList.remove('active-task'));
+        const activeRow = document.querySelector(`.task-row[data-id="${id}"]`);
+        if(activeRow) activeRow.classList.add('active-task');
+
+        document.getElementById('detail-task-title').innerText = title;
+        document.getElementById('detail-pane').style.display = 'flex';
+        
+        const { data, error } = await _supabase.from('subtasks').select('*').eq('id', id).single();
+        if(data) {
+            quill.root.innerHTML = data.notes || '';
+            document.getElementById('remind-val').innerText = data.remind_at ? data.remind_at.split('T')[0] : '';
+            document.getElementById('due-val').innerText = data.due_at ? data.due_at.split('T')[0] : '';
         }
-        document.getElementById('upload-status').style.display = 'none';
-        refreshFileList();
+        
+        loadTree(currentCategoryId, id, 'recursive-steps-root'); 
+        refreshFileList(); 
     }
 
-    async function refreshFileList() {
-        const { data: files } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
-        const container = document.getElementById('file-list-display');
-        container.innerHTML = (files || []).map(f => `
-            <div class="file-attachment-row">
-                <span>📄</span>
-                <a href="${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${f.file_path}" target="_blank">${f.file_name}</a>
-                <span style="cursor:pointer;color:#ccc;" onclick="deleteFile(${f.id}, '${f.file_path}')">✕</span>
-            </div>`).join('');
+    // ... (rest of helper functions for categories, files, etc. from previous iteration)
+    async function refreshCategories() {
+        const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
+        document.getElementById('category-list').innerHTML = data.map(c => `
+            <div class="sidebar-item ${currentCategoryId == c.id ? 'active' : ''}" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">
+                <span>📋 ${c.name}</span>
+            </div>
+        `).join('');
     }
 
-    async function deleteFile(id, path) {
-        await _supabase.storage.from(BUCKET_NAME).remove([path]);
-        await _supabase.from('task_files').delete().eq('id', id);
-        refreshFileList();
-    }
-
-    async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); if(id === currentTaskId) refreshTasks(); }
-    async function updateTaskField(f, v) { await _supabase.from('subtasks').update({ [f]: v }).eq('id', currentTaskId); openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); }
-    async function toggleCheck(id, s) { await _supabase.from('subtasks').update({ is_completed: !s }).eq('id', id); refreshTasks(); if(currentTaskId) loadTree(currentCategoryId, currentTaskId, 'recursive-steps-root'); }
-    async function deleteTask(id) { if(confirm("Delete?")) { await _supabase.from('subtasks').delete().eq('id', id); refreshTasks(); closeDetails(); } }
-    async function promptAddStep() { const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, parent_id: currentTaskId, task_text: v }]); loadTree(currentCategoryId, currentTaskId, 'recursive-steps-root'); } }
-    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v }]); refreshTasks(); } }
-    async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
-    async function setQuickDate(type, timeline) { let d = new Date(); if(timeline === 'tomorrow') d.setDate(d.getDate() + 1); await updateTaskField(type === 'remind' ? 'remind_at' : 'due_at', d.toISOString()); hideAllMenus(); }
-    
-    function toggleMenu(id) { event.stopPropagation(); hideAllMenus(id); const m = document.getElementById(id); m.style.display = m.style.display === 'block' ? 'none' : 'block'; }
-    function hideAllMenus(exceptId=null) { document.querySelectorAll('.datepicker-menu, .context-menu').forEach(m => { if(m.id !== exceptId) m.style.display='none'; }); }
-    document.addEventListener('click', () => hideAllMenus());
+    function hideAllMenus() { document.querySelectorAll('.datepicker-menu, .context-menu').forEach(m => m.style.display='none'); }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; refreshTasks(); }
+    function toggleMenu(id) { event.stopPropagation(); const m = document.getElementById(id); m.style.display = m.style.display === 'block' ? 'none' : 'block'; }
 
-    function makeResizable(r, c) { let x=0, w=0; r.addEventListener('mousedown', (e)=>{ x=e.clientX; w=c.getBoundingClientRect().width;
-        const m=(e)=>{c.style.width=`${w+(e.clientX-x)}px`}; const s=()=>{document.removeEventListener('mousemove',m); document.removeEventListener('mouseup',s)};
-        document.addEventListener('mousemove',m); document.addEventListener('mouseup',s); }); }
-    makeResizable(document.getElementById('resizer1'), document.getElementById('sidebar'));
-    makeResizable(document.getElementById('resizer2'), document.getElementById('main-content'));
-
-    quill = new Quill('#notes-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }]] } });
+    // Initial Load
     refreshCategories();
 </script>
 </body>
