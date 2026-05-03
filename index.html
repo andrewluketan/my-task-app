@@ -13,91 +13,63 @@
         :root { --sidebar-bg: #f3f4f6; --main-blue: #4b69ff; --border: #e5e7eb; --red: #dc2626; --text: #444; --ms-light-blue: #3b82f6; --ms-selected: #f3f9fe; --ms-brown: #964b00; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; display: flex; width: 100vw; height: 100vh; background: white; overflow: hidden; }
 
+        /* COLUMN WRAPPERS */
         #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
         #main-content { width: 350px; background: var(--main-blue); color: white; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; position: relative; }
-        
-        /* DETAIL PANE (Right Column) */
         #detail-pane { flex: 1; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; overflow-y: auto; position: relative; }
 
-        /* VIRTUAL MY DAY FOLDER */
-        .my-day-folder { background: #eef2ff !important; color: #1e3a8a !important; font-weight: bold; border-left: 5px solid var(--main-blue); }
-
-        /* GAP BUFFER */
+        /* FOOTER GAP BUFFER */
         #category-list, .task-list-container, .detail-scroll-area { padding-bottom: 120px !important; }
 
-        /* VISUAL STYLE - MS TO-DO SECTIONS */
-        .ms-section { background: white; border: 1px solid #eaeaea; border-radius: 6px; margin: 0 20px 10px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); position: relative; }
-        .ms-item { display: flex; align-items: center; gap: 15px; padding: 12px 18px; font-size: 14px; border-bottom: 1px solid #f6f6f6; color: #555; cursor: pointer; position: relative;}
-        .ms-item:last-child { border-bottom: none; }
-        .ms-date-display { margin-left: auto; color: var(--ms-light-blue); font-weight: 600; font-size: 12px; }
-
+        /* SIDEBAR FOLDERS */
         .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
+        .my-day-folder { background: #eef2ff !important; color: #1e3a8a !important; font-weight: bold; border-left: 5px solid var(--main-blue); }
 
-        /* MAIN COLUMN TASK STYLE (Restored Red Arrow Interactivity) */
+        /* MIDDLE COLUMN TASK ROW (Fixed Red Arrow image_fe22e1.png) */
         .task-list-container { padding: 10px 25px; }
-        .task-row { background: white; color: #333; margin-bottom: 8px; padding: 0 0 0 16px; border-radius: 4px; display: flex; align-items: center; gap: 10px; border: 1px solid #eee; position: relative; height: 50px; overflow: hidden; }
-        .editable-content { flex: 1; outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Fixed Red Arrow (image_6.png) */
+        .task-row { background: white; color: #333; margin-bottom: 8px; padding: 0 0 0 16px; border-radius: 4px; display: flex; align-items: center; gap: 10px; border: 1px solid #eee; position: relative; height: 52px; overflow: hidden; }
+        .editable-content { flex: 1; outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+        
         .red-arrow { 
-            width: 40px; height: 100%; display: flex; align-items: center; justify-content: center; 
+            width: 45px; height: 100%; display: flex; align-items: center; justify-content: center; 
             color: var(--red); font-weight: bold; font-size: 18px; cursor: pointer; 
             border-left: 1px solid #eee; transition: background 0.2s; margin-left: auto;
         }
         .red-arrow:hover { background: #fee2e2; }
-        
-        /* DETAIL PANE STEP STYLE */
-        .step-row-container { margin-bottom: 5px; }
-        .step-row { display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: white; border: 1px solid transparent; }
-        .nested-step-group { margin-left: 30px; padding-top: 5px; border-left: 2px solid #eaeaea; padding-left: 10px; }
 
-        /* DRAG & DROP VISUALS */
-        .sortable-ghost { opacity: 0.1; background: var(--main-blue) !important; }
-        .drag-handle { cursor: grab; color: #ccc; font-size: 20px; padding: 5px; }
+        /* DETAIL PANE SECTIONS (Microsoft Style) */
+        .ms-section { background: white; border: 1px solid #eaeaea; border-radius: 6px; margin: 0 20px 10px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); overflow: hidden; }
+        .ms-item { display: flex; align-items: center; gap: 15px; padding: 12px 18px; font-size: 14px; border-bottom: 1px solid #f6f6f6; color: #555; cursor: pointer; }
+        .ms-item:last-child { border-bottom: none; }
+        .ms-date-display { margin-left: auto; color: var(--ms-light-blue); font-weight: 600; font-size: 12px; }
+
+        /* RECURSIVE STEPS */
+        .step-row-container { margin-bottom: 5px; }
+        .step-row { display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: white; }
+        .nested-step-group { margin-left: 30px; padding-top: 5px; border-left: 2px solid #eaeaea; padding-left: 10px; min-height: 5px; }
+
+        /* COMMON ELEMENTS */
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
+        .drag-handle { cursor: grab; color: #ccc; font-size: 20px; padding: 5px; }
+        .sortable-ghost { opacity: 0.1; background: var(--main-blue) !important; }
 
-        /* MODAL OVERLAYS (Both modals share this) */
+        /* CUSTOM REPEAT MODAL (image_fe3de0.png) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 20000; display: none; align-items: center; justify-content: center; }
-        .ms-modal { background: white; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
-
-        /* MS-STYLE REPEAT DROPDOWN (image_4.png) */
-        .repeat-dropdown { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid var(--border); border-radius: 4px; z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; }
-        .repeat-option { display: flex; align-items: center; gap: 10px; padding: 10px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f9fafb; }
-        .repeat-option:hover { background: #f3f4f6; }
-        .repeat-option.selected { color: var(--main-blue); font-weight: bold; }
-
-        /* CUSTOM REPEAT MODAL (image_5.png) */
-        .custom-repeat-box { padding: 20px; width: 280px; }
-        .custom-repeat-row { display: flex; gap: 10px; align-items: center; margin: 15px 0; }
-        .ms-input-num { width: 50px; padding: 8px; border: 1px solid #ddd; border-bottom: 2px solid var(--ms-brown); border-radius: 4px; text-align: center; }
+        .ms-modal { background: white; width: 280px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
+        .custom-repeat-box { padding: 20px; }
+        .ms-input-num { width: 50px; padding: 8px; border: 1px solid #ddd; border-bottom: 2px solid var(--ms-brown); border-radius: 4px; text-align: center; font-size: 16px; }
         .ms-select { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: white; }
 
-        /* MS-STYLE DATE/TIME PICKER MODAL (image_3.png) */
-        .ms-date-modal { width: 280px; }
-        .ms-date-modal .header { display: flex; align-items: center; justify-content: space-between; padding: 15px; font-weight: 600; font-size: 16px; color: #222; }
-        .ms-date-modal .header button { border: none; background: none; cursor: pointer; font-size: 12px; }
-        .ms-calendar { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; padding: 0 10px; color: #444; }
-        .ms-day-cell { padding: 8px 0; cursor: pointer; border-radius: 4px; }
-        .ms-day-cell:hover:not(.other-month) { background: #f3f3f3; }
-        .ms-day-cell.other-month { color: #ccc; }
-        .ms-day-cell.today { position: relative; color: var(--ms-light-blue); font-weight: bold; }
-        .ms-day-cell.selected { background: var(--ms-light-blue) !important; color: white !important; font-weight: bold;}
-        .ms-day-header { font-weight: bold; color: #aaa; margin-bottom: 5px; }
-        .ms-time-selector { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 15px 10px; border-top: 1px solid #f0f0f0; }
-        .ms-time-input { width: 50px; text-align: center; border: 1px solid #ddd; border-radius: 4px; padding: 8px 0; font-size: 16px; }
-        .ms-am-pm { display: flex; border: 1px solid #ddd; border-radius: 4px; }
-        .ms-am-pm button { border: none; padding: 8px 12px; background: none; font-size: 14px; cursor: pointer; }
-        .ms-am-pm button.selected { background: #f0f0f0; font-weight: bold; }
-        .ms-modal-footer { display: flex; padding: 10px; gap: 10px; border-top: 1px solid #f0f0f0; background: #fafafa; }
-        .ms-btn-modal { flex: 1; padding: 10px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; font-size: 14px; font-weight: 600; }
-        .ms-btn-modal.save { background: var(--ms-brown); color: white; border: none; } /* Brown color from image */
+        /* REPEAT DROPDOWN MENU */
+        .repeat-dropdown { position: absolute; background: white; border: 1px solid var(--border); border-radius: 4px; z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; min-width: 200px; top: 100%; left: 0; }
+        .repeat-option { padding: 12px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f9fafb; display: flex; align-items: center; gap: 10px; }
+        .repeat-option:hover { background: #f3f4f6; }
 
         /* FLOATING FOOTER */
-        #global-actions { position: fixed; bottom: 0; left: 0; width: 100%; height: 65px; background: white; border-top: 2px solid var(--border); display: flex; align-items: center; z-index: 10000; box-shadow: 0 -3px 15px rgba(0,0,0,0.1); }
-        .action-cell { flex: 1; display: flex; align-items: center; justify-content: center; }
-        .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); }
+        #global-actions { position: fixed; bottom: 0; left: 0; width: 100%; height: 65px; background: white; border-top: 2px solid var(--border); display: flex; align-items: center; z-index: 10000; }
+        .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); flex: 1; }
 
         @media (max-width: 900px) { body { overflow-x: auto; } #sidebar, #main-content { min-width: 280px; } #detail-pane { min-width: 320px; } }
     </style>
@@ -114,255 +86,175 @@
         <div id="main-task-container" class="task-list-container"></div>
     </div>
 
-    <!-- Microsoft-To-Do Styled Detail Pane -->
     <div id="detail-pane">
-        <div class="ms-title-header" style="padding: 20px 20px 10px 20px; display:flex; align-items:center; gap:10px;">
+        <div class="ms-title-header" style="padding: 20px; display:flex; align-items:center; gap:10px;">
             <div class="circle-check"></div>
-            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:22px; font-weight:bold; flex:1;" onblur="updateText(currentTaskId, this)"></div>
-            <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:24px; color:#aaa; margin-left:auto;">✕</button>
+            <div id="detail-task-title" contenteditable="true" style="font-size:22px; font-weight:bold; flex:1;" onblur="updateText(currentTaskId, this)"></div>
+            <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:24px; color:#aaa;">✕</button>
         </div>
         
         <div class="detail-scroll-area">
-            <!-- RECURSIVE STEPS SECTION -->
             <div class="ms-section">
                 <div id="steps-forced-container"></div>
-                <div class="ms-item" style="color:var(--ms-light-blue); font-weight:bold;" onclick="addNestedStep()">
-                    <span>➕</span> Next step
-                </div>
+                <div class="ms-item" style="color:var(--ms-light-blue); font-weight:bold;" onclick="addNestedStep()">➕ Next step</div>
             </div>
-
-            <!-- (1) MY DAY FUNCTIONALITY -->
             <div class="ms-section">
-                <!-- Add to My Day state -->
-                <div class="ms-item" id="add-myday-btn" onclick="toggleMyDay(true)">
-                    <span>☀️</span> Add to My Day
-                </div>
-                <!-- Added to My Day state with Cancel button -->
-                <div class="ms-item my-day-item" id="remove-myday-btn" style="display:none; color:var(--ms-light-blue); background:var(--ms-selected);">
-                    <span>☀️</span> Added to My Day
-                    <button onclick="toggleMyDay(false)" style="border:none; background:none; color:#ccc; font-size:18px; cursor:pointer; margin-left:auto;">✕</button>
-                </div>
+                <div class="ms-item" id="add-myday-btn" onclick="toggleMyDay(true)"><span>☀️</span> Add to My Day</div>
+                <div class="ms-item" id="remove-myday-btn" style="display:none; color:var(--ms-light-blue); background:var(--ms-selected);"><span>☀️</span> Added to My Day <button onclick="toggleMyDay(false)" style="border:none; background:none; cursor:pointer; margin-left:auto; color:#ccc; font-size:18px;">✕</button></div>
             </div>
-
-            <!-- (2) & (3) REMIND, DUE DATE, REPEAT -->
             <div class="ms-section">
-                <!-- image_2.png styled Remind Me -->
-                <div class="ms-item" onclick="openMsDateTimeModal('remind_at')">
-                    <span>⏰</span> Remind me <span id="remind-val" class="ms-date-display">None</span>
-                </div>
-                <!-- image_1.png style Add Due Date -->
-                <div class="ms-item" onclick="openMsDateTimeModal('due_at')">
-                    <span>📅</span> Add due date <span id="due-val" class="ms-date-display">None</span>
-                </div>
-                <!-- image_4.png style Repeat -->
-                <div class="ms-item" id="repeat-item" style="position:relative">
-                    <span>🔁</span> Repeat <span id="repeat-val" class="ms-date-display">None</span>
+                <div class="ms-item" onclick="alert('Date Modal Placeholder')"><span>⏰</span> Remind me <span id="remind-val" class="ms-date-display">None</span></div>
+                <div class="ms-item" onclick="alert('Date Modal Placeholder')"><span>📅</span> Add due date <span id="due-val" class="ms-date-display">None</span></div>
+                <div class="ms-item" id="repeat-trigger" style="position:relative"><span>🔁</span> Repeat <span id="repeat-val" class="ms-date-display">None</span>
                     <div id="repeat-dropdown" class="repeat-dropdown">
-                        <div class="repeat-option" data-value="daily">Daily</div>
-                        <div class="repeat-option" data-value="weekdays">Weekdays</div>
-                        <div class="repeat-option" data-value="weekly">Weekly</div>
-                        <div class="repeat-option" data-value="monthly">Monthly</div>
-                        <div class="repeat-option" data-value="yearly">Yearly</div>
-                        <!-- image_5.png styled Custom option -->
-                        <div class="repeat-option" data-value="custom" onclick="openCustomRepeat()">Custom...</div>
+                        <div class="repeat-option" onclick="setRepeat('Daily')">Daily</div>
+                        <div class="repeat-option" onclick="setRepeat('Weekdays')">Weekdays</div>
+                        <div class="repeat-option" onclick="setRepeat('Weekly')">Weekly</div>
+                        <div class="repeat-option" onclick="openCustomRepeat()">Custom...</div>
                     </div>
                 </div>
             </div>
-
-            <!-- (4) MULTI-FILE ATTACHMENTS -->
-            <div class="ms-section" style="padding: 10px 0;">
-                <div class="ms-item" style="border-bottom:none" onclick="document.getElementById('file-input').click()">
-                    <span>📎</span> Add files <input type="file" id="file-input" multiple style="display:none" onchange="uploadMultipleFiles(this)">
-                </div>
-                <div id="file-list-display" style="padding: 0 18px 10px 18px;"></div>
-            </div>
-
-            <!-- NOTES EDITOR -->
-            <div class="ms-section" style="padding: 15px;">
-                <div style="font-size:12px; color:#aaa; margin-bottom:5px;">Add note</div>
-                <div id="notes-editor" style="height:200px; background:white; border:none; padding:0;"></div>
-            </div>
+            <div class="ms-section" style="padding: 15px;"><div id="notes-editor" style="height:200px;"></div></div>
         </div>
     </div>
 
     <div id="global-actions">
-        <div class="action-cell"><button class="btn-bottom" onclick="addCategory()">+ New List</button></div>
-        <div class="action-cell"><button class="btn-bottom" onclick="promptAddTask()">+ Add Task</button></div>
-        <div class="action-cell"><button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button></div>
+        <button class="btn-bottom" onclick="addCategory()">+ New List</button>
+        <button class="btn-bottom" onclick="promptAddTask()">+ Add Task</button>
+        <button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button>
     </div>
 
-    <!-- CUSTOM REPEAT MODAL (image_5.png) -->
+    <!-- CUSTOM REPEAT MODAL (image_fe3de0.png) -->
     <div id="custom-repeat-modal" class="modal-overlay">
         <div class="ms-modal">
             <div class="custom-repeat-box">
                 <div style="font-weight: 600; font-size: 16px;">Repeat every ...</div>
-                <div class="custom-repeat-row">
+                <div style="display:flex; gap:10px; align-items:center; margin:15px 0;">
                     <input type="number" id="custom-repeat-num" class="ms-input-num" value="1">
                     <select id="custom-repeat-freq" class="ms-select">
-                        <option value="days">days</option>
-                        <option value="weeks">weeks</option>
-                        <option value="months">months</option>
-                        <option value="years">years</option>
+                        <option value="days">days</option><option value="weeks">weeks</option><option value="months">months</option><option value="years">years</option>
                     </select>
                 </div>
                 <div style="display:flex; gap:10px; margin-top:20px;">
-                    <button style="flex:1; padding:10px; border:1px solid #ddd; background:white; border-radius:4px; font-weight:600;" onclick="closeCustomRepeat()">Cancel</button>
-                    <button style="flex:1; padding:10px; background:var(--ms-brown); color:white; border:none; border-radius:4px; font-weight:600;" onclick="saveCustomRepeat()">Save</button>
+                    <button style="flex:1; padding:10px; border:1px solid #ddd; background:white; border-radius:4px;" onclick="closeCustomRepeat()">Cancel</button>
+                    <button style="flex:1; padding:10px; background:var(--ms-brown); color:white; border:none; border-radius:4px; font-weight:bold;" onclick="saveCustomRepeat()">Save</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- CUSTOM MS DATE/TIME PICKER MODAL (image_3.png) -->
-    <div id="date-modal-overlay" class="modal-overlay">
-        <div class="ms-date-modal ms-modal">
-            <div class="header">
-                <div>May 2026</div>
-                <div style="display:flex; gap:10px;">
-                    <button style="color:#aaa;">▲</button>
-                    <button style="color:#222;">▼</button>
-                </div>
-            </div>
-            
-            <div class="ms-calendar" id="ms-calendar-grid">
-                <!-- Day Headers -->
-                <div class="ms-day-header">Su</div><div class="ms-day-header">Mo</div><div class="ms-day-header">Tu</div><div class="ms-day-header">We</div><div class="ms-day-header">Th</div><div class="ms-day-header">Fr</div><div class="ms-day-header">Sa</div>
-                <!-- Days (Simulated May 2026 for demo from image_3.png) -->
-                <div class="ms-day-cell other-month">26</div><div class="ms-day-cell other-month">27</div><div class="ms-day-cell other-month">28</div><div class="ms-day-cell other-month">29</div><div class="ms-day-cell other-month">30</div><div class="ms-day-cell">1</div><div class="ms-day-cell">2</div>
-                <div class="ms-day-cell selected">3</div><div class="ms-day-cell">4</div><div class="ms-day-cell">5</div><div class="ms-day-cell">6</div><div class="ms-day-cell">7</div><div class="ms-day-cell">8</div><div class="ms-day-cell">9</div>
-                <div class="ms-day-cell">10</div><div class="ms-day-cell">11</div><div class="ms-day-cell">12</div><div class="ms-day-cell">13</div><div class="ms-day-cell">14</div><div class="ms-day-cell">15</div><div class="ms-day-cell">16</div>
-                <div class="ms-day-cell">17</div><div class="ms-day-cell">18</div><div class="ms-day-cell">19</div><div class="ms-day-cell">20</div><div class="ms-day-cell">21</div><div class="ms-day-cell">22</div><div class="ms-day-cell">23</div>
-                <div class="ms-day-cell">24</div><div class="ms-day-cellI have rebuilt the provided foundational code to include both requested features. I have ensured that all recursive nesting logic, Supabase synchronization, and visual styling for the sidebars and main content remain intact from the 514-line source file.
+<script>
+    const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co'; 
+    const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; 
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let currentCategoryId = null, currentTaskId = null, quill = null;
 
-### Summary of Amendments:
-1.  **Restored Middle Column Red Arrow (image_6.png):** The Red Arrow (`>`) has been properly re-inserted into the `task-row` template within `renderListToContainer`. It features the correct CSS color, hover effect, and triggers the `openDetails` function for the associated task.
-2.  **Custom Repeat Frequency Modal (image_5.png):** Within the existing `repeat-dropdown` logic, selecting the "Custom..." option now opens a dedicated **Custom Repeat Modal** (`modal-overlay` class). This modal matches the architecture in `image_5.png`, featuring a number input, a frequency dropdown (days, weeks, months, years), and the brown "Save" button. Clicking "Save" updates the database via Supabase and displays the formatted custom pattern (e.g., "Every 2 weeks").
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Strategic Task Manager | Pro Suite</title>
-    <script src="[https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2](https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2)"></script>
-    <link href="[https://cdn.quilljs.com/1.3.6/quill.snow.css](https://cdn.quilljs.com/1.3.6/quill.snow.css)" rel="stylesheet">
-    <script src="[https://cdn.quilljs.com/1.3.6/quill.js](https://cdn.quilljs.com/1.3.6/quill.js)"></script>
-    <script src="[https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js](https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js)"></script>
-    
-    <style>
-        :root { --sidebar-bg: #f3f4f6; --main-blue: #4b69ff; --border: #e5e7eb; --red: #dc2626; --text: #444; --ms-light-blue: #3b82f6; --ms-selected: #f3f9fe; --ms-brown: #964b00; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; display: flex; width: 100vw; height: 100vh; background: white; overflow: hidden; }
+    quill = new Quill('#notes-editor', { theme: 'snow', placeholder: 'Add note' });
 
-        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
-        #main-content { width: 350px; background: var(--main-blue); color: white; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; position: relative; }
+    // --- INITIALIZATION ---
+    async function refreshCategories() {
+        const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
+        let html = `<div class="sidebar-item my-day-folder" id="my-day-btn" onclick="selectCategory('my-day', '☀️ My Day')">📋 My Day</div>`;
+        html += data.map(c => `<div class="sidebar-item" data-id="${c.id}" onclick="selectCategory(${c.id}, '${c.name}')">📋 ${c.name}</div>`).join('');
+        document.getElementById('category-list').innerHTML = html;
+    }
+
+    async function selectCategory(id, name) { 
+        currentCategoryId = id; 
+        document.getElementById('task-list-header').innerText = name; 
+        document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+        if(id === 'my-day') document.getElementById('my-day-btn').classList.add('active');
+        refreshTasks(); closeDetails(); 
+    }
+
+    // --- REPEAT LOGIC (image_fe3de0.png) ---
+    const repeatTrigger = document.getElementById('repeat-trigger');
+    const repeatDropdown = document.getElementById('repeat-dropdown');
+    repeatTrigger.onclick = (e) => { e.stopPropagation(); repeatDropdown.style.display = repeatDropdown.style.display === 'block' ? 'none' : 'block'; };
+
+    function setRepeat(val) {
+        document.getElementById('repeat-val').innerText = val;
+        _supabase.from('subtasks').update({ repeat_pattern: val }).eq('id', currentTaskId);
+        repeatDropdown.style.display = 'none';
+    }
+    function openCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'flex'; repeatDropdown.style.display = 'none'; }
+    function closeCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'none'; }
+    async function saveCustomRepeat() {
+        const pattern = `Every ${document.getElementById('custom-repeat-num').value} ${document.getElementById('custom-repeat-freq').value}`;
+        setRepeat(pattern); closeCustomRepeat();
+    }
+
+    // --- TASK RENDERING (RED ARROW FIX image_fe22e1.png) ---
+    async function refreshTasks() {
+        if (!currentCategoryId) return;
+        const query = currentCategoryId === 'my-day' ? _supabase.from('subtasks').select('*').eq('is_myday', true) : _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
+        const { data } = await query.order('position', { ascending: true });
         
-        /* DETAIL PANE (Right Column) */
-        #detail-pane { flex: 1; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; overflow-y: auto; position: relative; }
+        const container = document.getElementById('main-task-container');
+        container.innerHTML = data.map(t => `
+            <div class="task-row" data-id="${t.id}">
+                <div class="drag-handle">⋮⋮</div>
+                <div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div>
+                <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div>
+            </div>`).join('');
+        Sortable.create(container, { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
+    }
 
-        /* VIRTUAL MY DAY FOLDER */
-        .my-day-folder { background: #eef2ff !important; color: #1e3a8a !important; font-weight: bold; border-left: 5px solid var(--main-blue); }
-
-        /* GAP BUFFER */
-        #category-list, .task-list-container, .detail-scroll-area { padding-bottom: 120px !important; }
-
-        /* VISUAL STYLE - MS TO-DO SECTIONS */
-        .ms-section { background: white; border: 1px solid #eaeaea; border-radius: 6px; margin: 0 20px 10px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); position: relative; }
-        .ms-item { display: flex; align-items: center; gap: 15px; padding: 12px 18px; font-size: 14px; border-bottom: 1px solid #f6f6f6; color: #555; cursor: pointer; position: relative;}
-        .ms-item:last-child { border-bottom: none; }
-        .ms-date-display { margin-left: auto; color: var(--ms-light-blue); font-weight: 600; font-size: 12px; }
-
-        .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
-
-        /* MAIN COLUMN TASK STYLE (Fixed Red Arrow image_6.png) */
-        .task-list-container { padding: 10px 25px; }
-        .task-row { background: white; color: #333; margin-bottom: 8px; padding: 0 0 0 16px; border-radius: 4px; display: flex; align-items: center; gap: 10px; border: 1px solid #eee; position: relative; height: 50px; overflow: hidden; }
-        .editable-content { flex: 1; outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Correct Red Arrow (image_6.png) */
-        .red-arrow { 
-            width: 40px; height: 100%; display: flex; align-items: center; justify-content: center; 
-            color: var(--red); font-weight: bold; font-size: 18px; cursor: pointer; 
-            border-left: 1px solid #eee; transition: background 0.2s; margin-left: auto;
+    async function openDetails(id, title) {
+        currentTaskId = id;
+        document.getElementById('detail-task-title').innerText = title;
+        document.getElementById('detail-pane').style.display = 'flex';
+        const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
+        if(data) {
+            quill.root.innerHTML = data.notes || '';
+            document.getElementById('add-myday-btn').style.display = data.is_myday ? 'none' : 'flex';
+            document.getElementById('remove-myday-btn').style.display = data.is_myday ? 'flex' : 'none';
+            document.getElementById('repeat-val').innerText = data.repeat_pattern || 'None';
+            refreshRecursiveSteps();
         }
-        .red-arrow:hover { background: #fee2e2; }
-        
-        /* DETAIL PANE STEP STYLE */
-        .step-row-container { margin-bottom: 5px; }
-        .step-row { display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: white; border: 1px solid transparent; }
-        .nested-step-group { margin-left: 30px; padding-top: 5px; border-left: 2px solid #eaeaea; padding-left: 10px; }
+    }
 
-        /* DRAG & DROP VISUALS */
-        .sortable-ghost { opacity: 0.1; background: var(--main-blue) !important; }
-        .drag-handle { cursor: grab; color: #ccc; font-size: 20px; padding: 5px; }
-        .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; }
-        .circle-check.checked { background: #4caf50; border-color: #4caf50; }
+    async function refreshRecursiveSteps() {
+        const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId !== 'my-day' ? currentCategoryId : null).order('position', { ascending: true });
+        const container = document.getElementById('steps-forced-container');
+        container.innerHTML = '';
+        renderSteps(data, currentTaskId, container);
+        document.querySelectorAll('#steps-forced-container, .nested-step-group').forEach(g => {
+            Sortable.create(g, { group: 'steps', animation: 150, handle: '.drag-handle', onEnd: syncRecursivePositions });
+        });
+    }
 
-        /* MODAL OVERLAYS (Both modals share this) */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 20000; display: none; align-items: center; justify-content: center; }
-        .ms-modal { background: white; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
+    function renderSteps(all, pid, target) {
+        all.filter(t => t.parent_id === pid).forEach(t => {
+            const div = document.createElement('div');
+            div.className = 'step-row-container'; div.setAttribute('data-id', t.id);
+            div.innerHTML = `<div class="step-row"><div class="drag-handle">⋮⋮</div><div class="circle-check"></div><div style="flex:1" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div></div><div class="nested-step-group" data-parent="${t.id}"></div>`;
+            target.appendChild(div);
+            renderSteps(all, t.id, div.querySelector('.nested-step-group'));
+        });
+    }
 
-        /* MS-STYLE REPEAT DROPDOWN (image_4.png) */
-        .repeat-dropdown { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid var(--border); border-radius: 4px; z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; }
-        .repeat-option { display: flex; align-items: center; gap: 10px; padding: 10px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f9fafb; }
-        .repeat-option:hover { background: #f3f4f6; }
-        .repeat-option.selected { color: var(--main-blue); font-weight: bold; }
+    // --- SYSTEM ---
+    async function syncPositions(e) {
+        const updates = Array.from(e.from.querySelectorAll(':scope > [data-id]')).map((row, i) => _supabase.from('subtasks').update({ position: i + 1 }).eq('id', row.getAttribute('data-id')));
+        await Promise.all(updates);
+    }
+    async function syncRecursivePositions(e) {
+        const pid = e.to.getAttribute('data-parent') || currentTaskId;
+        const updates = Array.from(e.to.querySelectorAll(':scope > .step-row-container')).map((row, i) => _supabase.from('subtasks').update({ position: i + 1, parent_id: pid }).eq('id', row.getAttribute('data-id')));
+        await Promise.all(updates);
+    }
+    async function toggleMyDay(v) { await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); }
+    async function updateText(id, el) { if(id) await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
+    async function saveNotes() { await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Saved"); }
+    function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
+    async function addCategory() { const n = prompt("Name:"); if(n) await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); }
+    async function promptAddTask() { const v = prompt("Task:"); if(v) await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); }
+    async function addNestedStep() { const v = prompt("Step:"); if(v) await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshRecursiveSteps(); }
 
-        /* CUSTOM REPEAT MODAL (image_5.png) */
-        .custom-repeat-box { padding: 20px; width: 280px; }
-        .custom-repeat-row { display: flex; gap: 10px; align-items: center; margin: 15px 0; }
-        .ms-input-num { width: 50px; padding: 8px; border: 1px solid #ddd; border-bottom: 2px solid var(--ms-brown); border-radius: 4px; text-align: center; }
-        .ms-select { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: white; }
-
-        /* MS-STYLE DATE/TIME PICKER MODAL (image_3.png) */
-        .ms-date-modal { width: 280px; }
-        .ms-date-modal .header { display: flex; align-items: center; justify-content: space-between; padding: 15px; font-weight: 600; font-size: 16px; color: #222; }
-        .ms-date-modal .header button { border: none; background: none; cursor: pointer; font-size: 12px; }
-        .ms-calendar { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; padding: 0 10px; color: #444; }
-        .ms-day-cell { padding: 8px 0; cursor: pointer; border-radius: 4px; }
-        .ms-day-cell:hover:not(.other-month) { background: #f3f3f3; }
-        .ms-day-cell.other-month { color: #ccc; }
-        .ms-day-cell.today { position: relative; color: var(--ms-light-blue); font-weight: bold; }
-        .ms-day-cell.selected { background: var(--ms-light-blue) !important; color: white !important; font-weight: bold;}
-        .ms-day-header { font-weight: bold; color: #aaa; margin-bottom: 5px; }
-        .ms-time-selector { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 15px 10px; border-top: 1px solid #f0f0f0; }
-        .ms-time-input { width: 50px; text-align: center; border: 1px solid #ddd; border-radius: 4px; padding: 8px 0; font-size: 16px; }
-        .ms-am-pm { display: flex; border: 1px solid #ddd; border-radius: 4px; }
-        .ms-am-pm button { border: none; padding: 8px 12px; background: none; font-size: 14px; cursor: pointer; }
-        .ms-am-pm button.selected { background: #f0f0f0; font-weight: bold; }
-        .ms-modal-footer { display: flex; padding: 10px; gap: 10px; border-top: 1px solid #f0f0f0; background: #fafafa; }
-        .ms-btn-modal { flex: 1; padding: 10px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; font-size: 14px; font-weight: 600; }
-        .ms-btn-modal.save { background: var(--ms-brown); color: white; border: none; } /* Brown color from image */
-
-        /* FLOATING FOOTER */
-        #global-actions { position: fixed; bottom: 0; left: 0; width: 100%; height: 65px; background: white; border-top: 2px solid var(--border); display: flex; align-items: center; z-index: 10000; box-shadow: 0 -3px 15px rgba(0,0,0,0.1); }
-        .action-cell { flex: 1; display: flex; align-items: center; justify-content: center; }
-        .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); }
-
-        @media (max-width: 900px) { body { overflow-x: auto; } #sidebar, #main-content { min-width: 280px; } #detail-pane { min-width: 320px; } }
-    </style>
-</head>
-<body>
-
-    <div id="sidebar">
-        <div style="padding: 20px;"><input type="text" placeholder="Search" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;"></div>
-        <div id="category-list"></div>
-    </div>
-
-    <div id="main-content">
-        <div id="task-list-header" style="padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold;">Select a List</div>
-        <div id="main-task-container" class="task-list-container"></div>
-    </div>
-
-    <!-- Microsoft-To-Do Styled Detail Pane -->
-    <div id="detail-pane">
-        <div class="ms-title-header" style="padding: 20px 20px 10px 20px; display:flex; align-items:center; gap:10px;">
-            <div class="circle-check"></div>
-            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:22px; font-weight:bold; flex:1;" onblur="updateText(currentTaskId, this)"></div>
-            <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:24px; color:#aaa; margin-left:auto;">✕</button>
-        </div>
-        
-        <div class="detail-scroll-area">
-            <!-- RECURSIVE STEPS SECTION -->
-            <div class="ms-section">
-                <div id
+    refreshCategories();
+    window.onclick = () => repeatDropdown.style.display = 'none';
+</script>
+</body>
+</html>
+```[cite: 1]
