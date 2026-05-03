@@ -21,7 +21,6 @@
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
 
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
-        
         #task-items-container { flex: 1; padding: 10px 25px; overflow-y: auto; min-height: 200px; display: block !important; }
         
         .task-row { 
@@ -36,22 +35,19 @@
             cursor: default; 
             border: 1px solid #eee;
             position: relative;
-            /* CRITICAL: Prevents text selection from blocking the drag */
-            user-select: none; 
-            -webkit-user-select: none;
+            user-select: none;
         }
         
         .active-task { border: 2px solid white !important; font-weight: 900; background: rgba(255,255,255,0.1) !important; color: white !important; }
 
-        /* LIGHTWEIGHT DRAG STYLES (Performance focused) */
+        /* Performance optimized ghosting */
         .sortable-ghost { opacity: 0; } 
         .sortable-chosen { background: #f1f5f9 !important; border: 1px dashed var(--main-blue) !important; }
         .sortable-drag { 
             z-index: 9999 !important; 
-            position: fixed !important; 
-            pointer-events: none !important;
             opacity: 0.8;
             box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+            pointer-events: none;
         }
 
         .drag-handle { cursor: grab; padding: 5px 10px; color: #ccc; font-size: 18px; }
@@ -80,11 +76,11 @@
 
     <div id="detail-pane">
         <div class="detail-header">
-            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;" onblur="updateTaskText(currentTaskId, this)"></div>
+            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;"></div>
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px; margin-left: auto;">✕</button>
         </div>
         <div class="detail-scroll-area">
-            <div id="editor-wrapper"><div id="notes-editor"></div></div>
+            <div id="editor-wrapper"><div id="notes-editor" style="height:250px;"></div></div>
         </div>
     </div>
 
@@ -127,20 +123,29 @@
                 <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
             </div>`).join('');
 
-        // ULTRA-LIGHTWEIGHT INITIALIZATION
+        // MANUAL DOM RE-SYNC FIX
         Sortable.create(container, {
             handle: '.drag-handle',
-            animation: 100, 
-            forceFallback: true, 
-            fallbackClass: "sortable-drag",
-            ghostClass: 'sortable-ghost',
-            chosenClass: 'sortable-chosen',
+            animation: 150,
+            forceFallback: true,
             onEnd: async function () {
-                const rows = container.querySelectorAll('.task-row');
-                const updates = Array.from(rows).map((row, index) => {
-                    return _supabase.from('subtasks').update({ position: index + 1 }).eq('id', row.getAttribute('data-id'));
-                });
+                // We manually grab the order from the DOM immediately after drop
+                const rows = container.children;
+                const updates = [];
+                
+                for (let i = 0; i < rows.length; i++) {
+                    const taskId = rows[i].getAttribute('data-id');
+                    if (taskId) {
+                        updates.push(_supabase
+                            .from('subtasks')
+                            .update({ position: i + 1 })
+                            .eq('id', taskId)
+                        );
+                    }
+                }
+                
                 await Promise.all(updates);
+                console.log("Positions successfully updated in database.");
             }
         });
     }
@@ -155,9 +160,21 @@
 
     async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function toggleCheck(id, s) { await _supabase.from('subtasks').update({ is_completed: !s }).eq('id', id); refreshTasks(); }
-    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
-    async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
-    
+    async function promptAddTask() { 
+        const v = prompt("New Task:"); 
+        if(v) { 
+            await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); 
+            refreshTasks(); 
+        } 
+    }
+    async function addCategory() { 
+        const n = prompt("List name:"); 
+        if(n) { 
+            await _supabase.from('categories').insert([{ name: n }]); 
+            refreshCategories(); 
+        } 
+    }
+
     async function openDetails(id, title) {
         currentTaskId = id;
         document.querySelectorAll('.task-row').forEach(r => r.classList.remove('active-task'));
@@ -168,10 +185,15 @@
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) quill.root.innerHTML = data.notes || '';
     }
-    
+
+    async function saveNotes() { 
+        if(!currentTaskId) return; 
+        await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); 
+        alert("Notes saved."); 
+    }
+
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; refreshTasks(); }
-    async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Notes saved."); }
-    
+
     refreshCategories();
 </script>
 </body>
