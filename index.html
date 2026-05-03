@@ -54,6 +54,10 @@
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
         
         #editor-wrapper { background: white; border: 1px solid var(--border); border-radius: 4px; margin-top: 15px; min-height: 150px; }
+        
+        /* Drag handle styling */
+        .drag-handle { cursor: move; padding: 10px; font-weight: bold; user-select: none; color: #ccc; }
+        .sortable-ghost { opacity: 0.4; background: #e5e7eb; }
     </style>
 </head>
 <body>
@@ -132,32 +136,19 @@
     // Initialize Quill
     quill = new Quill('#notes-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }]] }, placeholder: '+ Add Notes' });
 
-    // --- SAVE NOTES FIX ---
     async function saveNotes() { 
-        if(!currentTaskId) {
-            alert("Please select a task first.");
-            return;
-        }
-        
-        // Ensure we get the actual HTML from the Quill instance
+        if(!currentTaskId) { alert("Please select a task first."); return; }
         const notesContent = quill.root.innerHTML;
-        
-        // Don't save empty placeholder paragraphs
         const cleanContent = (notesContent === '<p><br></p>') ? '' : notesContent;
 
         const { data, error } = await _supabase.from('subtasks')
             .update({ notes: cleanContent })
-            .eq('id', currentTaskId);
+            .eq('id', currentTaskId)
+            .select();
             
-        if(error) {
-            console.error("Save error:", error);
-            alert("Error saving notes. Check console.");
-        } else {
-            alert("Notes saved successfully!");
-        }
+        if(error) { alert(`Error: ${error.message}`); } else { alert("Notes saved successfully!"); }
     }
 
-    // --- OTHER CORE FUNCTIONS ---
     async function selectCategory(id, name) { 
         currentCategoryId = id; 
         document.getElementById('task-list-header').innerText = name;
@@ -168,7 +159,12 @@
 
     async function refreshTasks() {
         if (!currentCategoryId) return;
-        const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null).order('position', { ascending: true });
+        const { data, error } = await _supabase.from('subtasks')
+            .select('*')
+            .eq('category_id', currentCategoryId)
+            .is('parent_id', null)
+            .order('position', { ascending: true });
+
         const container = document.getElementById('task-items-container');
         container.innerHTML = data.map(t => `
             <div class="task-row ${currentTaskId == t.id ? 'active-task' : ''}" data-id="${t.id}">
@@ -177,6 +173,23 @@
                 <div class="editable-text" contenteditable="true" onblur="updateTaskText(${t.id}, this)">${t.task_text}</div>
                 <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
             </div>`).join('');
+
+        // FIXED DRAG-AND-DROP INITIALIZATION
+        Sortable.create(container, {
+            handle: '.drag-handle',
+            animation: 150,
+            forceFallback: true,
+            ghostClass: 'sortable-ghost',
+            onEnd: async function () {
+                const rows = container.querySelectorAll('.task-row');
+                const updates = Array.from(rows).map((row, index) => {
+                    return _supabase.from('subtasks')
+                        .update({ position: index })
+                        .eq('id', row.getAttribute('data-id'));
+                });
+                await Promise.all(updates);
+            }
+        });
     }
 
     async function openDetails(id, title) {
@@ -188,27 +201,28 @@
         document.getElementById('detail-task-title').innerText = title;
         document.getElementById('detail-pane').style.display = 'flex';
         
-        const { data, error } = await _supabase.from('subtasks').select('*').eq('id', id).single();
+        const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) {
             quill.root.innerHTML = data.notes || '';
             document.getElementById('remind-val').innerText = data.remind_at ? data.remind_at.split('T')[0] : '';
             document.getElementById('due-val').innerText = data.due_at ? data.due_at.split('T')[0] : '';
         }
-        
-        loadTree(currentCategoryId, id, 'recursive-steps-root'); 
-        refreshFileList(); 
+        refreshFileList();
     }
 
-    // ... (rest of helper functions for categories, files, etc. from previous iteration)
     async function refreshCategories() {
         const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
         document.getElementById('category-list').innerHTML = data.map(c => `
             <div class="sidebar-item ${currentCategoryId == c.id ? 'active' : ''}" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">
                 <span>📋 ${c.name}</span>
-            </div>
-        `).join('');
+            </div>`).join('');
     }
 
+    async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
+    async function toggleCheck(id, s) { await _supabase.from('subtasks').update({ is_completed: !s }).eq('id', id); refreshTasks(); }
+    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v }]); refreshTasks(); } }
+    async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
+    
     function hideAllMenus() { document.querySelectorAll('.datepicker-menu, .context-menu').forEach(m => m.style.display='none'); }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; refreshTasks(); }
     function toggleMenu(id) { event.stopPropagation(); const m = document.getElementById(id); m.style.display = m.style.display === 'block' ? 'none' : 'block'; }
