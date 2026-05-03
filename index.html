@@ -18,7 +18,7 @@
         #detail-pane { flex: 1; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; overflow-y: auto; }
 
         /* GAP BUFFER FOR FLOATING FOOTER */
-        #category-list, #task-items-container, .detail-scroll-area { padding-bottom: 100px !important; }
+        #category-list, #task-items-container, .detail-scroll-area { padding-bottom: 110px !important; }
 
         .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
@@ -26,24 +26,22 @@
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
         .task-row { background: white; color: #333; margin-bottom: 12px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; border: 1px solid #eee; position: relative; user-select: none; }
         
-        /* DETAIL PANE STYLING */
-        .detail-section { background: white; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px; }
-        .detail-item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; font-size: 14px; color: var(--text); border-bottom: 1px solid #f3f4f6; cursor: pointer; }
+        /* STEPS SECTION */
+        .step-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .step-check { width: 16px; height: 16px; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; }
+        .step-check.checked { background: #4caf50; border-color: #4caf50; }
+
+        .detail-section { background: white; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px; padding: 5px; }
+        .detail-item { display: flex; align-items: center; gap: 15px; padding: 12px 15px; font-size: 14px; color: var(--text); border-bottom: 1px solid #f3f4f6; cursor: pointer; }
         .date-display { margin-left: auto; color: var(--main-blue); font-weight: 600; font-size: 12px; }
 
-        /* FILE LIST */
-        #file-list-display { padding: 10px 20px; font-size: 13px; color: #666; }
-        .file-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; }
-
-        /* FLOATING FOOTER */
         #global-actions { position: fixed; bottom: 0; left: 0; width: 100%; height: 65px; background: white; border-top: 2px solid var(--border); display: flex; align-items: center; z-index: 10000; box-shadow: 0 -3px 15px rgba(0,0,0,0.1); }
         .action-cell { flex: 1; display: flex; align-items: center; justify-content: center; border-right: 1px solid #eee; }
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); }
 
-        /* DRAG GHOST */
-        .sortable-ghost { opacity: 0.1 !important; background: #cbd5e1 !important; border: 2px dashed var(--main-blue) !important; }
         .drag-handle { cursor: grab; padding: 10px; color: #ccc; font-size: 20px; }
-        
+        .red-arrow { font-size: 18px; color: var(--red); font-weight: bold; cursor: pointer; margin-left: auto; }
+
         @media (max-width: 900px) { body { overflow-x: auto; } #sidebar, #main-content { min-width: 280px; } #detail-pane { min-width: 320px; } }
     </style>
 </head>
@@ -61,7 +59,7 @@
 
     <div id="detail-pane">
         <div class="detail-header" style="padding:20px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #eee;">
-            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:18px; font-weight:bold;"></div>
+            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:18px; font-weight:bold;" onblur="updateTaskText(currentTaskId, this)"></div>
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:24px; margin-left:auto;">✕</button>
         </div>
         
@@ -69,10 +67,23 @@
             <div class="detail-section">
                 <div class="detail-item" onclick="promptDate('remind_at')"><span>⏰</span> Remind me <span id="remind-val" class="date-display">None</span></div>
                 <div class="detail-item" onclick="promptDate('due_at')"><span>📅</span> Add due date <span id="due-val" class="date-display">None</span></div>
-                <div class="detail-item" onclick="document.getElementById('file-input').click()"><span>📎</span> Attach File <input type="file" id="file-input" style="display:none" onchange="uploadFile(this)"></div>
             </div>
-            <div id="file-list-display"></div>
-            <div id="editor-wrapper"><div id="notes-editor" style="height:250px; background:white;"></div></div>
+
+            <div class="detail-section" style="padding: 15px;">
+                <div style="font-weight: bold; margin-bottom: 10px; display:flex; justify-content:space-between;">
+                    Steps <button onclick="addStep()" style="border:none; background:none; color:var(--main-blue); cursor:pointer;">+ Add Step</button>
+                </div>
+                <div id="steps-container"></div>
+            </div>
+
+            <div class="detail-section" style="padding: 15px;">
+                <div style="font-weight: bold; margin-bottom: 10px;">Attachments</div>
+                <button onclick="document.getElementById('file-input').click()" style="width:100%; padding:8px; border:1px dashed #ccc; background:#f9f9f9; border-radius:4px; cursor:pointer;">📎 Attach File</button>
+                <input type="file" id="file-input" style="display:none" onchange="uploadFile(this)">
+                <div id="file-list-display" style="margin-top:10px;"></div>
+            </div>
+
+            <div id="editor-wrapper"><div id="notes-editor" style="height:200px; background:white;"></div></div>
         </div>
     </div>
 
@@ -129,8 +140,31 @@
             quill.root.innerHTML = data.notes || '';
             document.getElementById('remind-val').innerText = data.remind_at || 'None';
             document.getElementById('due-val').innerText = data.due_at || 'None';
+            refreshSteps();
             refreshFiles();
         }
+    }
+
+    async function refreshSteps() {
+        const { data } = await _supabase.from('subtasks').select('*').eq('parent_id', currentTaskId).order('position', { ascending: true });
+        document.getElementById('steps-container').innerHTML = data.map(s => `
+            <div class="step-row">
+                <div class="step-check ${s.is_completed ? 'checked' : ''}" onclick="toggleStep(${s.id}, ${s.is_completed})"></div>
+                <div style="flex:1; ${s.is_completed ? 'text-decoration:line-through; color:gray;' : ''}">${s.task_text}</div>
+            </div>`).join('');
+    }
+
+    async function addStep() {
+        const v = prompt("New Step:");
+        if(v) {
+            await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId, task_text: v }]);
+            refreshSteps();
+        }
+    }
+
+    async function toggleStep(id, status) {
+        await _supabase.from('subtasks').update({ is_completed: !status }).eq('id', id);
+        refreshSteps();
     }
 
     async function promptDate(column) {
@@ -155,8 +189,10 @@
     async function refreshFiles() {
         const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
         document.getElementById('file-list-display').innerHTML = data.map(f => `
-            <div class="file-row"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id}, '${f.file_path}')" style="color:red; border:none; background:none;">DEL</button></div>
-        `).join('');
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px;">
+                <span>📄 ${f.file_name}</span>
+                <button onclick="deleteFile(${f.id}, '${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button>
+            </div>`).join('');
     }
 
     async function refreshCategories() {
@@ -166,7 +202,7 @@
         `).join('');
     }
 
-    async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
+    async function updateTaskText(id, el) { if(id) await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Saved."); }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; }
     async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
