@@ -11,66 +11,40 @@
     
     <style>
         :root { --sidebar-bg: #f3f4f6; --main-blue: #4b69ff; --border: #e5e7eb; --red: #dc2626; --text: #444; }
-        
-        /* FIX: Ensure the main container doesn't collapse or freeze */
-        body { 
-            font-family: 'Segoe UI', system-ui, sans-serif; 
-            margin: 0; 
-            display: flex; 
-            width: 100vw;
-            height: 100vh; 
-            background: white; 
-            overflow: hidden; 
-        }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; display: flex; width: 100vw; height: 100vh; background: white; overflow: hidden; }
 
-        /* SIDEBAR, MAIN CONTENT, & DETAIL PANE */
-        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; padding-bottom: 80px; }
-        #main-content { width: 350px; background: var(--main-blue); color: white; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; padding-bottom: 80px; position: relative; }
-        #detail-pane { flex: 1; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; overflow-y: auto; padding-bottom: 80px; }
+        #sidebar { width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+        #main-content { width: 350px; background: var(--main-blue); color: white; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; position: relative; }
+        #detail-pane { flex: 1; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; overflow-y: auto; }
+
+        /* GAP BUFFER FOR FLOATING FOOTER */
+        #category-list, #task-items-container, .detail-scroll-area { padding-bottom: 100px !important; }
 
         .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
 
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
-        #task-items-container { padding: 10px 25px; display: block !important; }
+        .task-row { background: white; color: #333; margin-bottom: 12px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; border: 1px solid #eee; position: relative; user-select: none; }
         
-        .task-row { 
-            background: white; color: #333; margin-bottom: 12px; padding: 12px 16px; 
-            border-radius: 4px; display: flex; align-items: center; gap: 12px; border: 1px solid #eee;
-            position: relative; user-select: none;
-        }
+        /* DETAIL PANE STYLING */
+        .detail-section { background: white; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px; }
+        .detail-item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; font-size: 14px; color: var(--text); border-bottom: 1px solid #f3f4f6; cursor: pointer; }
+        .date-display { margin-left: auto; color: var(--main-blue); font-weight: 600; font-size: 12px; }
 
-        /* FLOATING FOOTER FIX */
-        #global-actions { 
-            position: fixed; 
-            bottom: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 65px; 
-            background: white; 
-            border-top: 2px solid var(--border); 
-            display: flex; 
-            align-items: center; 
-            z-index: 10000;
-            box-shadow: 0 -3px 15px rgba(0,0,0,0.1);
-        }
+        /* FILE LIST */
+        #file-list-display { padding: 10px 20px; font-size: 13px; color: #666; }
+        .file-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; }
 
+        /* FLOATING FOOTER */
+        #global-actions { position: fixed; bottom: 0; left: 0; width: 100%; height: 65px; background: white; border-top: 2px solid var(--border); display: flex; align-items: center; z-index: 10000; box-shadow: 0 -3px 15px rgba(0,0,0,0.1); }
         .action-cell { flex: 1; display: flex; align-items: center; justify-content: center; border-right: 1px solid #eee; }
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); }
 
-        /* UI ELEMENTS */
+        /* DRAG GHOST */
+        .sortable-ghost { opacity: 0.1 !important; background: #cbd5e1 !important; border: 2px dashed var(--main-blue) !important; }
         .drag-handle { cursor: grab; padding: 10px; color: #ccc; font-size: 20px; }
-        .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
-        .circle-check.checked { background: #4caf50; border-color: #4caf50; }
-        .editable-text { outline: none; padding: 2px 6px; flex: 1; }
-        .red-arrow { font-size: 18px; color: var(--red); font-weight: bold; cursor: pointer; }
-
-        /* MOBILE FIX: Allow horizontal scrolling if screen is too small */
-        @media (max-width: 900px) {
-            body { overflow-x: auto; }
-            #sidebar, #main-content { min-width: 280px; }
-            #detail-pane { min-width: 320px; }
-        }
+        
+        @media (max-width: 900px) { body { overflow-x: auto; } #sidebar, #main-content { min-width: 280px; } #detail-pane { min-width: 320px; } }
     </style>
 </head>
 <body>
@@ -90,7 +64,16 @@
             <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:18px; font-weight:bold;"></div>
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:24px; margin-left:auto;">✕</button>
         </div>
-        <div id="editor-wrapper" style="padding:20px;"><div id="notes-editor" style="height:300px; background:white;"></div></div>
+        
+        <div class="detail-scroll-area" style="padding:20px;">
+            <div class="detail-section">
+                <div class="detail-item" onclick="promptDate('remind_at')"><span>⏰</span> Remind me <span id="remind-val" class="date-display">None</span></div>
+                <div class="detail-item" onclick="promptDate('due_at')"><span>📅</span> Add due date <span id="due-val" class="date-display">None</span></div>
+                <div class="detail-item" onclick="document.getElementById('file-input').click()"><span>📎</span> Attach File <input type="file" id="file-input" style="display:none" onchange="uploadFile(this)"></div>
+            </div>
+            <div id="file-list-display"></div>
+            <div id="editor-wrapper"><div id="notes-editor" style="height:250px; background:white;"></div></div>
+        </div>
     </div>
 
     <div id="global-actions">
@@ -122,15 +105,12 @@
         container.innerHTML = data.map(t => `
             <div class="task-row" data-id="${t.id}">
                 <div class="drag-handle">⋮⋮</div>
-                <div class="circle-check ${t.is_completed ? 'checked' : ''}" onclick="toggleCheck(${t.id}, ${t.is_completed})"></div>
                 <div class="editable-text" contenteditable="true" onblur="updateTaskText(${t.id}, this)">${t.task_text}</div>
                 <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
             </div>`).join('');
 
         Sortable.create(container, {
-            handle: '.drag-handle',
-            animation: 200,
-            forceFallback: true,
+            handle: '.drag-handle', animation: 200, forceFallback: true, swapThreshold: 1,
             onMove: (evt) => evt.related.className.indexOf('task-row') !== -1,
             onEnd: async function () {
                 const rows = container.querySelectorAll('.task-row');
@@ -140,34 +120,58 @@
         });
     }
 
-    async function refreshCategories() {
-        const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
-        document.getElementById('category-list').innerHTML = data.map(c => `
-            <div class="sidebar-item ${currentCategoryId == c.id ? 'active' : ''}" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">
-                📋 ${c.name}
-            </div>`).join('');
-    }
-
-    async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
-    async function toggleCheck(id, s) { await _supabase.from('subtasks').update({ is_completed: !s }).eq('id', id); refreshTasks(); }
-    async function promptAddTask() { 
-        if(!currentCategoryId) { alert("Please select a list first."); return; }
-        const v = prompt("New Task:"); 
-        if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } 
-    }
-    async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
-    
     async function openDetails(id, title) {
         currentTaskId = id;
         document.getElementById('detail-task-title').innerText = title;
         document.getElementById('detail-pane').style.display = 'flex';
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
-        if(data) quill.root.innerHTML = data.notes || '';
+        if(data) {
+            quill.root.innerHTML = data.notes || '';
+            document.getElementById('remind-val').innerText = data.remind_at || 'None';
+            document.getElementById('due-val').innerText = data.due_at || 'None';
+            refreshFiles();
+        }
     }
-    
+
+    async function promptDate(column) {
+        const val = prompt("Enter Date (YYYY-MM-DD):");
+        if(val) {
+            await _supabase.from('subtasks').update({ [column]: val }).eq('id', currentTaskId);
+            document.getElementById(column === 'due_at' ? 'due-val' : 'remind-val').innerText = val;
+        }
+    }
+
+    async function uploadFile(input) {
+        const file = input.files[0];
+        if(!file || !currentTaskId) return;
+        const path = `task_${currentTaskId}/${Date.now()}_${file.name}`;
+        const { error } = await _supabase.storage.from('task-attachments').upload(path, file);
+        if(!error) {
+            await _supabase.from('task_files').insert([{ task_id: currentTaskId, file_name: file.name, file_path: path }]);
+            refreshFiles();
+        }
+    }
+
+    async function refreshFiles() {
+        const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
+        document.getElementById('file-list-display').innerHTML = data.map(f => `
+            <div class="file-row"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id}, '${f.file_path}')" style="color:red; border:none; background:none;">DEL</button></div>
+        `).join('');
+    }
+
+    async function refreshCategories() {
+        const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
+        document.getElementById('category-list').innerHTML = data.map(c => `
+            <div class="sidebar-item ${currentCategoryId == c.id ? 'active' : ''}" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">📋 ${c.name}</div>
+        `).join('');
+    }
+
+    async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
+    async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Saved."); }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; }
-    async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Notes saved."); }
-    
+    async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
+    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
+
     refreshCategories();
 </script>
 </body>
