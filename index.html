@@ -22,12 +22,14 @@
 
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
         
+        /* CONTAINER FIX: Explicit Block Rendering */
         #task-items-container { 
             flex: 1; 
             padding: 10px 25px; 
-            overflow-y: auto; 
-            min-height: 400px; 
+            overflow-y: auto !important; 
+            min-height: 500px; 
             display: block !important; 
+            position: relative;
         }
         
         .task-row { 
@@ -39,28 +41,26 @@
             display: flex; 
             align-items: center; 
             gap: 12px; 
-            cursor: default; 
             border: 1px solid #eee;
             position: relative;
             user-select: none !important;
-            -webkit-user-select: none !important;
-            -webkit-user-drag: none !important; /* Forces browser to ignore native drag */
-            touch-action: none; /* Prevents notebook touch-pad scrolling from interfering */
+            -webkit-user-drag: none !important;
+            touch-action: none;
         }
 
-        /* FORCED LANDING ZONE */
+        /* HIGH VISIBILITY GHOST */
         .sortable-ghost { 
-            opacity: 1 !important; 
-            background: #e2e8f0 !important; 
+            opacity: 0.1 !important; 
+            background: #cbd5e1 !important; 
             border: 2px dashed var(--main-blue) !important;
             visibility: visible !important;
-            height: 54px !important; /* Physical hole height */
         }
         
         .sortable-drag { 
-            opacity: 0.9;
             z-index: 10000 !important;
             pointer-events: none !important;
+            background: white !important;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3) !important;
         }
 
         .drag-handle { cursor: grab !important; padding: 10px; color: #ccc; font-size: 20px; }
@@ -92,9 +92,7 @@
             <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;"></div>
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px; margin-left: auto;">✕</button>
         </div>
-        <div class="detail-scroll-area">
-            <div id="editor-wrapper"><div id="notes-editor" style="height:250px;"></div></div>
-        </div>
+        <div id="editor-wrapper"><div id="notes-editor" style="height:250px;"></div></div>
     </div>
 
     <div id="global-actions">
@@ -116,16 +114,11 @@
         document.getElementById('task-list-header').innerText = name;
         refreshTasks(); 
         refreshCategories(); 
-        closeDetails(); 
     }
 
     async function refreshTasks() {
         if (!currentCategoryId) return;
-        const { data } = await _supabase.from('subtasks')
-            .select('*')
-            .eq('category_id', currentCategoryId)
-            .is('parent_id', null)
-            .order('position', { ascending: true });
+        const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null).order('position', { ascending: true });
 
         const container = document.getElementById('task-items-container');
         container.innerHTML = data.map(t => `
@@ -136,21 +129,22 @@
                 <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
             </div>`).join('');
 
-        // FORCED FALLBACK INITIALIZATION
+        // ATOMIC INITIALIZATION
         Sortable.create(container, {
             handle: '.drag-handle',
-            animation: 150,
+            animation: 200,
             forceFallback: true,
-            fallbackTolerance: 3, // Prevents text selection from blocking the drag
-            swapThreshold: 0.6,
-            ghostClass: 'sortable-ghost',
+            swapThreshold: 1,
+            // Forces other tasks to move the second the drag overlaps them
+            onMove: function(evt) {
+                return evt.related.className.indexOf('task-row') !== -1;
+            },
             onEnd: async function () {
                 const rows = container.querySelectorAll('.task-row');
                 const updates = Array.from(rows).map((row, index) => {
                     return _supabase.from('subtasks').update({ position: index + 1 }).eq('id', row.getAttribute('data-id'));
                 });
                 await Promise.all(updates);
-                console.log("Positions synced.");
             }
         });
     }
@@ -170,9 +164,6 @@
     
     async function openDetails(id, title) {
         currentTaskId = id;
-        document.querySelectorAll('.task-row').forEach(r => r.classList.remove('active-task'));
-        const row = document.querySelector(`.task-row[data-id="${id}"]`);
-        if(row) row.classList.add('active-task');
         document.getElementById('detail-task-title').innerText = title;
         document.getElementById('detail-pane').style.display = 'flex';
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
