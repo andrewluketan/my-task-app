@@ -17,31 +17,29 @@
         #main-content { width: 350px; background: var(--main-blue); color: white; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; position: relative; }
         #detail-pane { flex: 1; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; overflow-y: auto; }
 
-        /* GAP BUFFER FOR MOBILE VISIBILITY */
-        #category-list, #task-items-container, #nested-steps-container, .detail-scroll-area { padding-bottom: 120px !important; }
+        /* GAP BUFFER */
+        #category-list, .task-list-container, .detail-scroll-area { padding-bottom: 120px !important; }
 
         .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
 
-        #task-list-header, .pane-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
-        
-        /* UNIFIED TASK ROW STYLING */
+        /* RECURSIVE NESTING STYLES */
+        .task-list-container { min-height: 10px; }
         .task-row { 
-            background: white; color: #333; margin-bottom: 12px; padding: 12px 16px; 
-            border-radius: 4px; display: flex; align-items: center; gap: 12px; border: 1px solid #eee;
-            position: relative; user-select: none;
+            background: white; color: #333; margin-top: 8px; padding: 10px; 
+            border-radius: 4px; border: 1px solid #eee; position: relative;
         }
+        .task-content { display: flex; align-items: center; gap: 10px; }
+        .nested-group { margin-left: 25px; padding-top: 5px; border-left: 2px solid #e5e7eb; padding-left: 10px; }
+
+        .detail-section { background: white; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px; padding: 15px; }
         
-        .detail-section { background: white; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px; padding: 10px; }
-        
-        /* DRAG & DROP GHOSTING */
-        .sortable-ghost { opacity: 0.1 !important; background: #cbd5e1 !important; border: 2px dashed var(--main-blue) !important; }
-        .drag-handle { cursor: grab; padding: 10px; color: #ccc; font-size: 20px; }
+        /* DRAG VISUALS */
+        .sortable-ghost { opacity: 0.1; background: var(--main-blue) !important; }
+        .drag-handle { cursor: grab; color: #ccc; font-size: 18px; padding: 5px; }
         .red-arrow { font-size: 18px; color: var(--red); font-weight: bold; cursor: pointer; margin-left: auto; }
 
-        /* FLOATING FOOTER */
         #global-actions { position: fixed; bottom: 0; left: 0; width: 100%; height: 65px; background: white; border-top: 2px solid var(--border); display: flex; align-items: center; z-index: 10000; box-shadow: 0 -3px 15px rgba(0,0,0,0.1); }
-        .action-cell { flex: 1; display: flex; align-items: center; justify-content: center; border-right: 1px solid #eee; }
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); }
 
         @media (max-width: 900px) { body { overflow-x: auto; } #sidebar, #main-content { min-width: 280px; } #detail-pane { min-width: 320px; } }
@@ -55,38 +53,27 @@
     </div>
 
     <div id="main-content">
-        <div id="task-list-header">Select a List</div>
-        <div id="task-items-container"></div>
+        <div id="task-list-header" style="padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold;">Select a List</div>
+        <div id="main-task-container" class="task-list-container" style="padding: 10px 25px;"></div>
     </div>
 
     <div id="detail-pane">
         <div class="detail-header" style="padding:20px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #eee;">
-            <button id="back-btn" onclick="goBack()" style="display:none; border:none; background:none; cursor:pointer; font-size:20px;">⬅️</button>
-            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:18px; font-weight:bold;" onblur="updateTaskText(currentTaskId, this)"></div>
+            <div id="detail-task-title" style="font-size:18px; font-weight:bold;"></div>
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:24px; margin-left:auto;">✕</button>
         </div>
-        
         <div class="detail-scroll-area" style="padding:20px;">
             <div class="detail-section">
-                <div style="font-weight: bold; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center;">
-                    Steps / Sub-tasks 
-                    <button onclick="addNestedTask()" style="border:none; background:none; color:var(--main-blue); cursor:pointer; font-weight:bold;">+ Add Step</button>
-                </div>
-                <!-- RECURSIVE DRAG-AND-DROP CONTAINER -->
-                <div id="nested-steps-container"></div>
-            </div>
-
-            <div class="detail-section">
                 <div style="font-weight: bold; margin-bottom: 10px;">Notes</div>
-                <div id="editor-wrapper"><div id="notes-editor" style="height:200px; background:white;"></div></div>
+                <div id="editor-wrapper"><div id="notes-editor" style="height:300px; background:white;"></div></div>
             </div>
         </div>
     </div>
 
     <div id="global-actions">
-        <div class="action-cell"><button class="btn-bottom" onclick="addCategory()">+ New List</button></div>
-        <div class="action-cell"><button class="btn-bottom" onclick="promptAddTask()">+ Add Task</button></div>
-        <div class="action-cell" style="border-right:none;"><button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button></div>
+        <div class="action-cell" style="flex:1; display:flex; justify-content:center;"><button class="btn-bottom" onclick="addCategory()">+ New List</button></div>
+        <div class="action-cell" style="flex:1; display:flex; justify-content:center;"><button class="btn-bottom" onclick="promptAddTask()">+ Add Task</button></div>
+        <div class="action-cell" style="flex:1; display:flex; justify-content:center;"><button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button></div>
     </div>
 
 <script>
@@ -95,98 +82,103 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let currentCategoryId = null, currentTaskId = null, quill = null;
-    let taskHistory = []; // Tracks breadcrumbs for unlimited nesting
 
-    quill = new Quill('#notes-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }]] }, placeholder: '+ Add Notes' });
+    quill = new Quill('#notes-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }]] } });
 
     async function selectCategory(id, name) { 
         currentCategoryId = id; 
-        taskHistory = [];
         document.getElementById('task-list-header').innerText = name;
         refreshTasks(); 
         refreshCategories(); 
-        closeDetails();
-    }
-
-    // UNIFIED FUNCTION TO BUILD DRAGGABLE LISTS
-    function initDraggable(containerId) {
-        const container = document.getElementById(containerId);
-        Sortable.create(container, {
-            handle: '.drag-handle', animation: 200, forceFallback: true, swapThreshold: 1,
-            onMove: (evt) => evt.related.className.indexOf('task-row') !== -1,
-            onEnd: async function () {
-                const rows = container.querySelectorAll('.task-row');
-                const updates = Array.from(rows).map((row, index) => 
-                    _supabase.from('subtasks').update({ position: index + 1 }).eq('id', row.getAttribute('data-id'))
-                );
-                await Promise.all(updates);
-            }
-        });
     }
 
     async function refreshTasks() {
         if (!currentCategoryId) return;
-        const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null).order('position', { ascending: true });
-        renderList(data, 'task-items-container');
+        const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).order('position', { ascending: true });
+        
+        const container = document.getElementById('main-task-container');
+        container.innerHTML = '';
+        renderRecursive(data, null, container);
+        initAllSortables();
     }
 
-    async function refreshNestedTasks() {
-        if (!currentTaskId) return;
-        const { data } = await _supabase.from('subtasks').select('*').eq('parent_id', currentTaskId).order('position', { ascending: true });
-        renderList(data, 'nested-steps-container');
+    // THE RECURSIVE ENGINE: Draws tasks and their children
+    function renderRecursive(allTasks, parentId, targetElement) {
+        const children = allTasks.filter(t => t.parent_id === parentId);
+        children.forEach(t => {
+            const row = document.createElement('div');
+            row.className = 'task-row';
+            row.setAttribute('data-id', t.id);
+            row.innerHTML = `
+                <div class="task-content">
+                    <div class="drag-handle">⋮⋮</div>
+                    <div style="flex:1" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div>
+                    <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
+                </div>
+                <div class="nested-group" data-parent="${t.id}"></div>
+            `;
+            targetElement.appendChild(row);
+            renderRecursive(allTasks, t.id, row.querySelector('.nested-group'));
+        });
     }
 
-    function renderList(data, containerId) {
-        const container = document.getElementById(containerId);
-        container.innerHTML = data.map(t => `
-            <div class="task-row" data-id="${t.id}">
-                <div class="drag-handle">⋮⋮</div>
-                <div class="editable-text" contenteditable="true" onblur="updateTaskText(${t.id}, this)">${t.task_text}</div>
-                <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
-            </div>`).join('');
-        initDraggable(containerId);
+    // THE NESTED SORTABLE ENGINE: Connects all groups
+    function initAllSortables() {
+        const groups = document.querySelectorAll('.task-list-container, .nested-group');
+        groups.forEach(group => {
+            Sortable.create(group, {
+                group: 'nested-tasks', // Allows dragging between levels
+                animation: 150,
+                fallbackOnBody: true,
+                swapThreshold: 0.6,
+                handle: '.drag-handle',
+                onEnd: async function (evt) {
+                    const taskId = evt.item.getAttribute('data-id');
+                    const newParentId = evt.to.getAttribute('data-parent') || null;
+                    
+                    // AJAX UPDATE: Save new position and new parent
+                    const rows = evt.to.querySelectorAll(':scope > .task-row');
+                    const updates = Array.from(rows).map((row, index) => 
+                        _supabase.from('subtasks').update({ 
+                            position: index + 1, 
+                            parent_id: newParentId 
+                        }).eq('id', row.getAttribute('data-id'))
+                    );
+                    await Promise.all(updates);
+                    console.log(`Task ${taskId} moved under parent ${newParentId}`);
+                }
+            });
+        });
     }
 
     async function openDetails(id, title) {
-        if (currentTaskId) taskHistory.push(currentTaskId); // Track parent for "Back" functionality
         currentTaskId = id;
-        
-        document.getElementById('back-btn').style.display = taskHistory.length > 0 ? 'block' : 'none';
         document.getElementById('detail-task-title').innerText = title;
         document.getElementById('detail-pane').style.display = 'flex';
-        
-        const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
-        if(data) {
-            quill.root.innerHTML = data.notes || '';
-            refreshNestedTasks();
-        }
+        const { data } = await _supabase.from('subtasks').select('notes').eq('id', id).single();
+        if(data) quill.root.innerHTML = data.notes || '';
     }
 
-    function goBack() {
-        const prevId = taskHistory.pop();
-        if (prevId) {
-            _supabase.from('subtasks').select('*').eq('id', prevId).single().then(({data}) => {
-                openDetails(data.id, data.task_text);
-                taskHistory.pop(); // Remove the push triggered by openDetails
-            });
-        } else {
-            closeDetails();
-        }
-    }
-
-    async function addNestedTask() {
-        const v = prompt("New Step:");
-        if(v && currentTaskId) {
-            await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId, task_text: v, position: 999 }]);
-            refreshNestedTasks();
-        }
-    }
-
-    async function updateTaskText(id, el) { if(id) await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
+    async function updateText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Saved."); }
-    function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; taskHistory = []; }
-    async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
-    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
+    function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; }
+    
+    async function promptAddTask() {
+        if(!currentCategoryId) return;
+        const v = prompt("New Task:");
+        if(v) {
+            await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]);
+            refreshTasks();
+        }
+    }
+
+    async function addCategory() {
+        const n = prompt("List name:");
+        if(n) {
+            await _supabase.from('categories').insert([{ name: n }]);
+            refreshCategories();
+        }
+    }
 
     async function refreshCategories() {
         const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
