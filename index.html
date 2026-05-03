@@ -27,6 +27,7 @@
         .task-row { background: white; color: #333; margin-bottom: 8px; padding: 0 0 0 16px; border-radius: 4px; display: flex; align-items: center; gap: 10px; border: 1px solid #eee; position: relative; height: 52px; overflow: hidden; }
         .editable-content { flex: 1; outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
         
+        /* FIXED RED ARROW STYLE (image_fe22e1.png) */
         .red-arrow { 
             width: 45px; height: 100%; display: flex; align-items: center; justify-content: center; 
             color: var(--red); font-weight: bold; font-size: 18px; cursor: pointer; 
@@ -47,9 +48,13 @@
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
         .drag-handle { cursor: grab; color: #ccc; font-size: 20px; padding: 5px; }
 
+        /* CUSTOM REPEAT MODAL (image_fe3de0.png) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 20000; display: none; align-items: center; justify-content: center; }
         .ms-modal { background: white; width: 280px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
-        
+        .custom-repeat-box { padding: 20px; }
+        .ms-input-num { width: 50px; padding: 8px; border: 1px solid #ddd; border-bottom: 2px solid var(--ms-brown); border-radius: 4px; text-align: center; }
+        .ms-select { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+
         .ms-calendar { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; padding: 10px; }
         .ms-day-cell { padding: 8px 0; cursor: pointer; border-radius: 4px; }
         .ms-day-cell.selected { background: var(--ms-light-blue); color: white; }
@@ -116,10 +121,11 @@
         <button class="btn-bottom" style="color:var(--red);" onclick="saveNotes()">Save Notes</button>
     </div>
 
+    <!-- CUSTOM REPEAT MODAL (image_fe3de0.png) -->
     <div id="custom-repeat-modal" class="modal-overlay">
-        <div class="ms-modal"><div style="padding:20px;"><div style="font-weight:600;">Repeat every ...</div>
-        <div style="display:flex; gap:10px; margin:15px 0;"><input type="number" id="custom-repeat-num" value="1" style="width:50px; padding:8px; border:1px solid #ddd; border-bottom:2px solid var(--ms-brown);">
-        <select id="custom-repeat-freq" style="flex:1; padding:8px; border:1px solid #ddd;"><option value="days">days</option><option value="weeks">weeks</option><option value="months">months</option><option value="years">years</option></select></div>
+        <div class="ms-modal"><div class="custom-repeat-box"><div style="font-weight:600;">Repeat every ...</div>
+        <div style="display:flex; gap:10px; margin:15px 0;"><input type="number" id="custom-repeat-num" value="1" class="ms-input-num">
+        <select id="custom-repeat-freq" class="ms-select"><option value="days">days</option><option value="weeks">weeks</option><option value="months">months</option><option value="years">years</option></select></div>
         <div style="display:flex; gap:10px;"><button style="flex:1; padding:10px; border:1px solid #ddd; background:white; border-radius:4px;" onclick="closeCustomRepeat()">Cancel</button>
         <button style="flex:1; padding:10px; background:var(--ms-brown); color:white; border:none; border-radius:4px; font-weight:bold;" onclick="saveCustomRepeat()">Save</button></div></div></div>
     </div>
@@ -148,19 +154,12 @@
         let html = `<div class="sidebar-item my-day-folder" id="my-day-btn" onclick="selectCategory('my-day', '☀️ My Day')">📋 My Day</div>`;
         html += data.map(c => `<div class="sidebar-item" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">📋 ${c.name}</div>`).join('');
         document.getElementById('category-list').innerHTML = html;
-        refreshCategoriesActiveState();
     }
 
     async function selectCategory(id, name) { 
         currentCategoryId = id; document.getElementById('task-list-header').innerText = name; 
-        refreshCategoriesActiveState(); refreshTasks(); closeDetails(); 
-    }
-
-    function refreshCategoriesActiveState() {
-        document.querySelectorAll('.sidebar-item').forEach(el => {
-            el.classList.remove('active');
-            if (currentCategoryId === 'my-day' && el.id === 'my-day-btn') el.classList.add('active');
-        });
+        document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+        refreshTasks(); closeDetails(); 
     }
 
     async function refreshTasks() {
@@ -238,7 +237,7 @@
     async function addNestedStep() { const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshRecursiveSteps(); } }
 
     refreshCategories();
-    window.onclick = () => { repeatDropdown.style.display = 'none'; };
+    window.onclick = (e) => { if (e.target !== repeatTrigger) repeatDropdown.style.display = 'none'; };
 </script>
 </body>
 </html>
