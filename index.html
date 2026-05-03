@@ -22,7 +22,7 @@
 
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
         
-        /* FIX: Ensure container allows children to reflow */
+        /* CONTAINER FIX: Fluid Layout */
         #task-items-container { 
             flex: 1; 
             padding: 10px 25px; 
@@ -34,7 +34,7 @@
         .task-row { 
             background: white; 
             color: #333; 
-            margin-bottom: 8px; 
+            margin-bottom: 10px; 
             padding: 12px 16px; 
             border-radius: 4px; 
             display: flex; 
@@ -44,15 +44,15 @@
             border: 1px solid #eee;
             position: relative;
             z-index: 1;
+            transition: transform 0.2s; /* Allows fluid shuffling */
         }
         
-        .active-task { border: 2px solid var(--main-blue) !important; font-weight: bold; }
+        .active-task { border: 2px solid white !important; font-weight: 900; background: rgba(255,255,255,0.1) !important; color: white !important; }
 
-        /* FIX: High-Visibility Dragging Styles */
+        /* DRAG VISUALS */
         .sortable-ghost { 
-            opacity: 0.4; 
+            opacity: 0.1 !important; 
             background: #cbd5e1 !important; 
-            border: 2px dashed #64748b !important;
         }
         .sortable-chosen { 
             background: #f8fafc !important; 
@@ -60,10 +60,11 @@
         .sortable-drag { 
             opacity: 0.9; 
             z-index: 1000 !important;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            pointer-events: none; /* Prevents the dragged item from blocking the drop zone */
         }
 
-        .drag-handle { cursor: grab; padding: 5px 10px; color: #cbd5e1; font-size: 18px; user-select: none; }
+        .drag-handle { cursor: grab; padding: 5px 10px; color: #ccc; font-size: 18px; user-select: none; }
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
         .editable-text { outline: none; padding: 2px 6px; flex: 1; }
@@ -71,6 +72,8 @@
 
         #global-actions { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: white; border-top: 1px solid var(--border); display: flex; align-items: center; z-index: 1000; }
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--main-blue); }
+        
+        #editor-wrapper { background: white; border: 1px solid var(--border); border-radius: 4px; margin-top: 15px; min-height: 150px; }
     </style>
 </head>
 <body>
@@ -89,11 +92,11 @@
 
     <div id="detail-pane">
         <div class="detail-header">
-            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;"></div>
+            <div id="detail-task-title" class="editable-text" contenteditable="true" style="font-size:20px; font-weight:bold;" onblur="updateTaskText(currentTaskId, this)"></div>
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px; margin-left: auto;">✕</button>
         </div>
         <div class="detail-scroll-area">
-            <div id="editor-wrapper"><div id="notes-editor" style="height: 250px;"></div></div>
+            <div id="editor-wrapper"><div id="notes-editor"></div></div>
         </div>
     </div>
 
@@ -136,23 +139,21 @@
                 <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
             </div>`).join('');
 
-        // FIX: Re-initialize Sortable with explicit swap logic
+        // INITIALIZE SORTABLE
         Sortable.create(container, {
             handle: '.drag-handle',
-            animation: 250, 
-            swapThreshold: 0.5, 
-            invertSwap: true,
+            animation: 200, 
+            forceFallback: true, 
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
-            forceFallback: true, 
             onEnd: async function () {
                 const rows = container.querySelectorAll('.task-row');
                 const updates = Array.from(rows).map((row, index) => {
                     return _supabase.from('subtasks').update({ position: index + 1 }).eq('id', row.getAttribute('data-id'));
                 });
                 await Promise.all(updates);
-                console.log("Sync complete");
+                console.log("Reorder synced.");
             }
         });
     }
