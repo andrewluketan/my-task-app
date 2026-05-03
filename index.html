@@ -28,13 +28,13 @@
             padding: 10px 25px; 
             overflow-y: auto; 
             min-height: 200px; 
-            display: block !important; /* Forces block layout for better reflow */
+            display: block !important; 
         }
         
         .task-row { 
             background: white; 
             color: #333; 
-            margin-bottom: 8px; /* Increased margin for clearer gaps */
+            margin-bottom: 8px; 
             padding: 12px 16px; 
             border-radius: 4px; 
             display: flex; 
@@ -139,13 +139,13 @@
         // FIX: Re-initialize Sortable with explicit swap logic
         Sortable.create(container, {
             handle: '.drag-handle',
-            animation: 250, // Slower animation to see the move
-            swapThreshold: 0.5, // Sensitivity for tasks moving out of the way
+            animation: 250, 
+            swapThreshold: 0.5, 
             invertSwap: true,
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
-            forceFallback: true, // Crucial for notebook browsers
+            forceFallback: true, 
             onEnd: async function () {
                 const rows = container.querySelectorAll('.task-row');
                 const updates = Array.from(rows).map((row, index) => {
