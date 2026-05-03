@@ -24,13 +24,12 @@
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
         #task-items-container { flex: 1; padding: 10px 25px; overflow-y: auto; min-height: 100px; }
         
-        .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: default; border: 2px solid transparent; transition: all 0.2s; }
+        .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: default; border: 2px solid transparent; transition: background 0.2s; }
         .task-row.active-task { border-color: rgba(255,255,255,0.5); font-weight: 900; background: #f0f4ff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .task-row.active-task .editable-text { font-weight: 900; color: var(--main-blue); }
-
+        
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
-        .editable-text { outline: none; padding: 2px 6px; border-radius: 2px; cursor: text; flex: 1; width: fit-content; min-width: 50px; }
+        .editable-text { outline: none; padding: 2px 6px; border-radius: 2px; cursor: text; flex: 1; }
         .red-arrow { font-size: 18px; color: var(--red); font-weight: bold; cursor: pointer; padding: 0 5px; user-select: none; }
 
         #global-actions { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: white; border-top: 1px solid var(--border); display: flex; align-items: center; z-index: 1000; }
@@ -39,10 +38,11 @@
         
         #editor-wrapper { background: white; border: 1px solid var(--border); border-radius: 4px; margin-top: 15px; min-height: 150px; }
         
-        /* Drag handle fix */
-        .drag-handle { cursor: grab; padding: 10px; font-weight: bold; user-select: none; color: #ccc; -webkit-user-drag: none; }
-        .drag-handle:active { cursor: grabbing; }
-        .sortable-ghost { opacity: 0.3; background: #dbeafe !important; }
+        /* IMPROVED: Sortable classes for better visuals */
+        .drag-handle { cursor: grab; padding: 10px; font-weight: bold; user-select: none; color: #ccc; }
+        .sortable-ghost { opacity: 0; } /* Hide the original item while dragging */
+        .sortable-chosen { background: #f9fafb !important; border: 1px dashed var(--main-blue) !important; }
+        .sortable-drag { opacity: 0.8; background: white !important; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
     </style>
 </head>
 <body>
@@ -65,10 +65,6 @@
             <button onclick="closeDetails()" style="border:none; background:none; cursor:pointer; font-size:20px; margin-left: auto;">✕</button>
         </div>
         <div class="detail-scroll-area">
-            <div class="detail-section">
-                <div class="detail-item"><span>⏰</span> Remind me <span id="remind-val" class="date-display"></span></div>
-                <div class="detail-item"><span>📅</span> Add due date <span id="due-val" class="date-display"></span></div>
-            </div>
             <div id="editor-wrapper"><div id="notes-editor"></div></div>
         </div>
     </div>
@@ -87,13 +83,6 @@
 
     quill = new Quill('#notes-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }]] }, placeholder: '+ Add Notes' });
 
-    async function saveNotes() { 
-        if(!currentTaskId) return;
-        const notesContent = quill.root.innerHTML;
-        const { error } = await _supabase.from('subtasks').update({ notes: notesContent }).eq('id', currentTaskId);
-        if(!error) alert("Notes saved successfully!");
-    }
-
     async function selectCategory(id, name) { 
         currentCategoryId = id; 
         document.getElementById('task-list-header').innerText = name;
@@ -111,30 +100,34 @@
             .order('position', { ascending: true });
 
         const container = document.getElementById('task-items-container');
-        // draggable="false" prevents browser-default ghosting
         container.innerHTML = data.map(t => `
-            <div class="task-row ${currentTaskId == t.id ? 'active-task' : ''}" data-id="${t.id}" draggable="false">
-                <div class="drag-handle" draggable="false">⋮⋮</div>
+            <div class="task-row ${currentTaskId == t.id ? 'active-task' : ''}" data-id="${t.id}">
+                <div class="drag-handle">⋮⋮</div>
                 <div class="circle-check ${t.is_completed ? 'checked' : ''}" onclick="toggleCheck(${t.id}, ${t.is_completed})"></div>
                 <div class="editable-text" contenteditable="true" onblur="updateTaskText(${t.id}, this)">${t.task_text}</div>
                 <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
             </div>`).join('');
 
-        // Strict re-initialization with fallback to JS-based drag
+        // FIXED: Using SortableJS with direct database write
         Sortable.create(container, {
             handle: '.drag-handle',
             animation: 150,
-            forceFallback: true, 
-            fallbackClass: "sortable-fallback",
+            forceFallback: true,
             ghostClass: 'sortable-ghost',
-            onStart: () => { document.body.style.cursor = 'grabbing'; },
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
             onEnd: async function () {
-                document.body.style.cursor = 'default';
                 const rows = container.querySelectorAll('.task-row');
+                // Instead of 20 separate calls, we run them in parallel
                 const updates = Array.from(rows).map((row, index) => {
-                    return _supabase.from('subtasks').update({ position: index }).eq('id', row.getAttribute('data-id'));
+                    return _supabase
+                        .from('subtasks')
+                        .update({ position: index })
+                        .eq('id', row.getAttribute('data-id'));
                 });
+                
                 await Promise.all(updates);
+                console.log("Database updated successfully");
             }
         });
     }
@@ -149,9 +142,24 @@
 
     async function updateTaskText(id, el) { await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function toggleCheck(id, s) { await _supabase.from('subtasks').update({ is_completed: !s }).eq('id', id); refreshTasks(); }
-    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v }]); refreshTasks(); } }
+    async function promptAddTask() { const v = prompt("New Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
     async function addCategory() { const n = prompt("List name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
+    async function openDetails(id, title) {
+        currentTaskId = id;
+        document.querySelectorAll('.task-row').forEach(r => r.classList.remove('active-task'));
+        const row = document.querySelector(`.task-row[data-id="${id}"]`);
+        if(row) row.classList.add('active-task');
+        document.getElementById('detail-task-title').innerText = title;
+        document.getElementById('detail-pane').style.display = 'flex';
+        const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
+        if(data) quill.root.innerHTML = data.notes || '';
+    }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; refreshTasks(); }
+    async function saveNotes() { 
+        if(!currentTaskId) return;
+        await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId);
+        alert("Notes saved.");
+    }
     
     refreshCategories();
 </script>
