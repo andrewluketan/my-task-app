@@ -18,15 +18,14 @@
         #detail-pane { flex: 1; min-width: 400px; background: #fafafa; border-left: 1px solid var(--border); display: none; flex-direction: column; padding-bottom: 60px; overflow-y: auto;}
 
         .sidebar-item { padding: 14px 20px; cursor: pointer; font-size: 16px; color: #374151; display: flex; align-items: center; justify-content: space-between; gap: 10px; position: relative; }
-        .sidebar-item:hover { background: #e5e7eb; }
         .sidebar-item.active { background: #dbeafe; color: #1d4ed8; font-weight: 700; border-left: 5px solid var(--main-blue); }
 
         #task-list-header { padding: 30px 25px 10px 25px; font-size: 22px; font-weight: bold; }
         #task-items-container { flex: 1; padding: 10px 25px; overflow-y: auto; min-height: 100px; }
         
-        .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: default; border: 2px solid transparent; transition: background 0.2s; }
+        .task-row { background: white; color: #333; margin-bottom: 2px; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; gap: 12px; cursor: default; border: 2px solid transparent; }
         .task-row.active-task { border-color: rgba(255,255,255,0.5); font-weight: 900; background: #f0f4ff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        
+
         .circle-check { width: 18px; height: 18px; border: 1px solid #ccc; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
         .editable-text { outline: none; padding: 2px 6px; border-radius: 2px; cursor: text; flex: 1; }
@@ -36,13 +35,10 @@
         .action-cell { height: 100%; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; }
         .btn-bottom { background: none; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
         
-        #editor-wrapper { background: white; border: 1px solid var(--border); border-radius: 4px; margin-top: 15px; min-height: 150px; }
-        
-        /* IMPROVED: Sortable classes for better visuals */
         .drag-handle { cursor: grab; padding: 10px; font-weight: bold; user-select: none; color: #ccc; }
-        .sortable-ghost { opacity: 0; } /* Hide the original item while dragging */
-        .sortable-chosen { background: #f9fafb !important; border: 1px dashed var(--main-blue) !important; }
-        .sortable-drag { opacity: 0.8; background: white !important; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+        .drag-handle:active { cursor: grabbing; }
+        .sortable-ghost { opacity: 0.1; background: var(--main-blue) !important; }
+        .sortable-chosen { background: #f0f4ff !important; border: 2px dashed var(--main-blue) !important; }
     </style>
 </head>
 <body>
@@ -108,26 +104,23 @@
                 <div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')">&gt;</div>
             </div>`).join('');
 
-        // FIXED: Using SortableJS with direct database write
         Sortable.create(container, {
             handle: '.drag-handle',
             animation: 150,
             forceFallback: true,
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
-            dragClass: 'sortable-drag',
             onEnd: async function () {
+                // UI stays in place. We calculate and save the new positions silently.
                 const rows = container.querySelectorAll('.task-row');
-                // Instead of 20 separate calls, we run them in parallel
                 const updates = Array.from(rows).map((row, index) => {
                     return _supabase
                         .from('subtasks')
-                        .update({ position: index })
+                        .update({ position: index + 1 })
                         .eq('id', row.getAttribute('data-id'));
                 });
-                
                 await Promise.all(updates);
-                console.log("Database updated successfully");
+                console.log("Background sync complete.");
             }
         });
     }
@@ -155,11 +148,7 @@
         if(data) quill.root.innerHTML = data.notes || '';
     }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; currentTaskId = null; refreshTasks(); }
-    async function saveNotes() { 
-        if(!currentTaskId) return;
-        await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId);
-        alert("Notes saved.");
-    }
+    async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Notes saved."); }
     
     refreshCategories();
 </script>
