@@ -500,17 +500,27 @@
     }
 
     // --- DETAILS ---
+    // SURGICAL FIX FOR PROBLEM 3: Reading persistence from database
     async function openDetails(id, title) {
-        currentTaskId = id; document.getElementById('detail-task-title').innerText = title; document.getElementById('detail-pane').style.display = 'flex';
+        currentTaskId = id; 
+        document.getElementById('detail-task-title').innerText = title; 
+        document.getElementById('detail-pane').style.display = 'flex';
+        
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) {
             quill.root.innerHTML = data.notes || '';
-            document.getElementById('add-myday-btn').style.display = data.is_myday ? 'none' : 'flex';
-            document.getElementById('remove-myday-btn').style.display = data.is_myday ? 'flex' : 'none';
+            
+            // Fix: Dynamically show/hide buttons based on actual DB status[cite: 8]
+            const isMyDay = data.is_myday === true;
+            document.getElementById('add-myday-btn').style.display = isMyDay ? 'none' : 'flex';
+            document.getElementById('remove-myday-btn').style.display = isMyDay ? 'flex' : 'none';
+            
             document.getElementById('remind-val').innerText = data.remind_at ? 'Sun, May 3, 11:33 pm' : 'None';
             document.getElementById('due-val').innerText = data.due_at ? 'Sun, May 3, 11:33 pm' : 'None';
             document.getElementById('repeat-val').innerText = data.repeat_pattern || 'None';
-            refreshRecursiveSteps(); refreshFiles();
+            
+            refreshRecursiveSteps(); 
+            refreshFiles();
         }
     }
 
@@ -529,7 +539,7 @@
         });
     }
 
-    // --- REPEAT (PROBLEM 5 FIX) ---
+    // --- REPEAT ---
     const repeatTrigger = document.getElementById('repeat-trigger');
     const repeatDropdown = document.getElementById('repeat-dropdown');
     if(repeatTrigger) {
@@ -541,7 +551,7 @@
     function closeCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'none'; }
     function saveCustomRepeat() { const p = `Every ${document.getElementById('custom-repeat-num').value} ${document.getElementById('custom-repeat-freq').value}`; setRepeat(p); closeCustomRepeat(); }
 
-    // --- CALENDAR HELPERS (PROBLEM 5 FIX) ---
+    // --- CALENDAR HELPERS ---
     function selectDay(el) { document.querySelectorAll('.ms-day-cell').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }
     function toggleAmPm(mode) { document.getElementById('btn-am').classList.toggle('selected', mode==='am'); document.getElementById('btn-pm').classList.toggle('selected', mode==='pm'); }
     function openMsDateTimeModal(c) { targetDateTimeColumn = c; document.getElementById('date-modal-overlay').style.display = 'flex'; }
@@ -554,7 +564,7 @@
         closeMsDateTimeModal(); 
     }
 
-    // --- FILES (PROBLEM 4 FIX) ---
+    // --- FILES ---
     async function uploadFiles(input) {
         for (const file of input.files) {
             const p = `task_${currentTaskId}/${Date.now()}_${file.name}`;
@@ -567,22 +577,29 @@
         const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
         document.getElementById('file-list-display').innerHTML = data.map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
     }
+    // SURGICAL FIX FOR PROBLEM 4: Direct re-render callback[cite: 8]
     async function deleteFile(id, path) { 
         await _supabase.storage.from('task-attachments').remove([path]); 
-        await _supabase.from('task_files').delete().eq('id', id); 
-        refreshFiles(); // Forced refresh for Problem 4
+        const { error } = await _supabase.from('task_files').delete().eq('id', id); 
+        if (!error) {
+            refreshFiles(); 
+        }
     }
 
-    // --- ACTIONS (PROBLEM 3 FIX) ---
+    // --- ACTIONS ---
+    // SURGICAL FIX FOR PROBLEM 3: Syncing UI and live My Day folder view[cite: 8]
     async function toggleMyDay(v) { 
-        await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
+        const { error } = await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
         
-        // Immediate UI toggle for Problem 3
-        document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
-        document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
-        
-        if(currentCategoryId === 'my-day') {
-            refreshTasks(); 
+        if (!error) {
+            // Immediate UI toggle bar update[cite: 8]
+            document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
+            document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
+            
+            // Problem 3 Fix: If viewing My Day folder, task must appear/vanish immediately[cite: 8]
+            if (currentCategoryId === 'my-day') {
+                refreshTasks(); 
+            }
         }
     }
 
@@ -595,7 +612,7 @@
     async function promptAddTask() { if(!currentCategoryId || currentCategoryId === 'my-day') return; const v = prompt("Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
     async function addNestedStep() { if(!currentTaskId) return; const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshRecursiveSteps(); } }
 
-    window.onclick = () => { if(repeatDropdown) repeatDropdown.style.display = 'none'; };
+    window.onclick = () => { if (typeof repeatDropdown !== 'undefined' && repeatDropdown) repeatDropdown.style.display = 'none'; };
 </script>
 </body>
 </html>
