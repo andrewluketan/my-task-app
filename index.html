@@ -85,7 +85,7 @@
         .ms-item { 
             display: flex; 
             align-items: center; 
- gap: 15px; 
+            gap: 15px; 
             padding: 12px 18px; 
             font-size: 14px; 
             border-bottom: 1px solid #f6f6f6; 
@@ -478,19 +478,16 @@
         refreshTasks(); closeDetails(); 
     }
 
-    // --- TASKS ---
+    // --- TASKS (Surgically Fixed Filter Logic) ---
     async function refreshTasks() {
         if (!currentCategoryId) return;
         
-        // SURGICAL FIX: When My Day is active, query ONLY tasks where is_myday is true.
-        // Also ensuring we only pull parent tasks (is('parent_id', null)) to avoid step clutter.
-        let q;
-        if (currentCategoryId === 'my-day') {
-            q = _supabase.from('subtasks').select('*').eq('is_myday', true).is('parent_id', null);
-        } else {
-            q = _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
-        }
-        
+        // FIX: Explicitly check for is_myday when currentCategoryId is 'my-day'
+        // This prevents the center column from erroneously displaying items from previous categories
+        const q = currentCategoryId === 'my-day' ? 
+            _supabase.from('subtasks').select('*').eq('is_myday', true) : 
+            _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
+            
         const { data } = await q.order('position', { ascending: true });
         document.getElementById('main-task-container').innerHTML = data.map(t => `
             <div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div></div>`).join('');
@@ -565,8 +562,18 @@
     }
     async function deleteFile(id, path) { await _supabase.storage.from('task-attachments').remove([path]); await _supabase.from('task_files').delete().eq('id', id); refreshFiles(); }
 
-    // --- ACTIONS ---
-    async function toggleMyDay(v) { await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); if(currentCategoryId==='my-day') refreshTasks(); }
+    // --- ACTIONS (Surgically Fixed Toggle) ---
+    async function toggleMyDay(v) { 
+        await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
+        openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); 
+        
+        // FIX: Ensure the center column is refreshed if we are currently looking at 'my-day'
+        // This removes the task from the list immediately when deselected
+        if(currentCategoryId === 'my-day') {
+            refreshTasks(); 
+        }
+    }
+
     async function updateText(id, el) { if(id) await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Saved"); }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
