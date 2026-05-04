@@ -499,14 +499,20 @@
         Sortable.create(document.getElementById('main-task-container'), { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
     }
 
-    // --- DETAILS ---
+    // --- DETAILS: SURGICAL FIX FOR PERSISTENCE (PROBLEM 3) ---
     async function openDetails(id, title) {
-        currentTaskId = id; document.getElementById('detail-task-title').innerText = title; document.getElementById('detail-pane').style.display = 'flex';
+        currentTaskId = id; 
+        document.getElementById('detail-task-title').innerText = title; 
+        document.getElementById('detail-pane').style.display = 'flex';
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) {
             quill.root.innerHTML = data.notes || '';
-            document.getElementById('add-myday-btn').style.display = data.is_myday ? 'none' : 'flex';
-            document.getElementById('remove-myday-btn').style.display = data.is_myday ? 'flex' : 'none';
+            
+            // Logic: Set buttons based on actual DB boolean to ensure persistence[cite: 9]
+            const isMyDay = (data.is_myday === true);
+            document.getElementById('add-myday-btn').style.display = isMyDay ? 'none' : 'flex';
+            document.getElementById('remove-myday-btn').style.display = isMyDay ? 'flex' : 'none';
+            
             document.getElementById('remind-val').innerText = data.remind_at ? 'Sun, May 3, 11:33 pm' : 'None';
             document.getElementById('due-val').innerText = data.due_at ? 'Sun, May 3, 11:33 pm' : 'None';
             document.getElementById('repeat-val').innerText = data.repeat_pattern || 'None';
@@ -529,19 +535,15 @@
         });
     }
 
-    // --- REPEAT (PROBLEM 5 FIX) ---
     const repeatTrigger = document.getElementById('repeat-trigger');
     const repeatDropdown = document.getElementById('repeat-dropdown');
-    if(repeatTrigger) {
-        repeatTrigger.onclick = (e) => { e.stopPropagation(); repeatDropdown.style.display = repeatDropdown.style.display === 'block' ? 'none' : 'block'; };
-    }
+    if(repeatTrigger) repeatTrigger.onclick = (e) => { e.stopPropagation(); repeatDropdown.style.display = repeatDropdown.style.display === 'block' ? 'none' : 'block'; };
 
     function setRepeat(val) { document.getElementById('repeat-val').innerText = val; _supabase.from('subtasks').update({ repeat_pattern: val }).eq('id', currentTaskId); repeatDropdown.style.display = 'none'; }
     function openCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'flex'; if(repeatDropdown) repeatDropdown.style.display = 'none'; }
     function closeCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'none'; }
     function saveCustomRepeat() { const p = `Every ${document.getElementById('custom-repeat-num').value} ${document.getElementById('custom-repeat-freq').value}`; setRepeat(p); closeCustomRepeat(); }
 
-    // --- CALENDAR HELPERS (PROBLEM 5 FIX) ---
     function selectDay(el) { document.querySelectorAll('.ms-day-cell').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }
     function toggleAmPm(mode) { document.getElementById('btn-am').classList.toggle('selected', mode==='am'); document.getElementById('btn-pm').classList.toggle('selected', mode==='pm'); }
     function openMsDateTimeModal(c) { targetDateTimeColumn = c; document.getElementById('date-modal-overlay').style.display = 'flex'; }
@@ -554,35 +556,34 @@
         closeMsDateTimeModal(); 
     }
 
-    // --- FILES (PROBLEM 4 FIX) ---
+    // --- FILES: SEQUENTIAL DELETE (PROBLEM 4 FIX) ---
     async function uploadFiles(input) {
         for (const file of input.files) {
             const p = `task_${currentTaskId}/${Date.now()}_${file.name}`;
             const { error } = await _supabase.storage.from('task-attachments').upload(p, file);
             if(!error) await _supabase.from('task_files').insert([{ task_id: currentTaskId, file_name: file.name, file_path: p }]);
         }
-        refreshFiles();
+        await refreshFiles();
     }
     async function refreshFiles() {
         const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
-        document.getElementById('file-list-display').innerHTML = data.map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
+        document.getElementById('file-list-display').innerHTML = (data || []).map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
     }
     async function deleteFile(id, path) { 
+        // Logic: Wait for removal to finish before refresh[cite: 9]
         await _supabase.storage.from('task-attachments').remove([path]); 
-        await _supabase.from('task_files').delete().eq('id', id); 
-        refreshFiles(); // Forced refresh for Problem 4
+        const { error } = await _supabase.from('task_files').delete().eq('id', id); 
+        if (!error) await refreshFiles();[cite: 9]
     }
 
-    // --- ACTIONS (PROBLEM 3 FIX) ---
+    // --- ACTIONS: SYNCED MY DAY (PROBLEM 3 FIX) ---
     async function toggleMyDay(v) { 
-        await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
-        
-        // Immediate UI toggle for Problem 3
-        document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
-        document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
-        
-        if(currentCategoryId === 'my-day') {
-            refreshTasks(); 
+        // Logic: Await DB completion then force folder rebuild[cite: 9]
+        const { error } = await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
+        if (!error) {
+            document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
+            document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
+            if (currentCategoryId === 'my-day') await refreshTasks();[cite: 9]
         }
     }
 
@@ -594,8 +595,7 @@
     async function addCategory() { const n = prompt("Name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
     async function promptAddTask() { if(!currentCategoryId || currentCategoryId === 'my-day') return; const v = prompt("Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
     async function addNestedStep() { if(!currentTaskId) return; const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshRecursiveSteps(); } }
-
-    window.onclick = () => { if(repeatDropdown) repeatDropdown.style.display = 'none'; };
+    window.onclick = () => { if(typeof repeatDropdown !== 'undefined' && repeatDropdown) repeatDropdown.style.display = 'none'; };
 </script>
 </body>
 </html>
