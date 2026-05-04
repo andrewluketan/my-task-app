@@ -471,25 +471,31 @@
         document.getElementById('category-list').innerHTML = html;
     }
 
+    // FIX FOR PROBLEM 1: Force container clear on selection to prevent data carry-over
     async function selectCategory(id, name) { 
         currentCategoryId = id; 
         document.getElementById('task-list-header').innerText = name; 
         document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
         if(id === 'my-day') document.getElementById('my-day-btn').classList.add('active');
         
+        // Immediate visual clear of tasks to reset the view
         document.getElementById('main-task-container').innerHTML = '';
         
         refreshTasks(); 
         closeDetails(); 
     }
 
+    // --- TASKS (SURGICAL FIX FOR PROBLEM 1 & 2) ---
     async function refreshTasks() {
         if (!currentCategoryId) return;
         
+        // REWRITTEN QUERY: Enforcing strict isolation between category filter and myday filter
         let q;
         if (currentCategoryId === 'my-day') {
+            // Strictly query ONLY tasks flagged for My Day, regardless of category_id
             q = _supabase.from('subtasks').select('*').eq('is_myday', true).is('parent_id', null);
         } else {
+            // Strictly query ONLY tasks belonging to the current category_id
             q = _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
         }
         
@@ -500,12 +506,14 @@
             return;
         }
 
+        // Render the results (Empty array if nothing matches the strict filters)
         document.getElementById('main-task-container').innerHTML = data.map(t => `
             <div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div></div>`).join('');
         
         Sortable.create(document.getElementById('main-task-container'), { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
     }
 
+    // --- DETAILS ---
     async function openDetails(id, title) {
         currentTaskId = id; document.getElementById('detail-task-title').innerText = title; document.getElementById('detail-pane').style.display = 'flex';
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
@@ -535,6 +543,7 @@
         });
     }
 
+    // --- REPEAT ---
     const repeatTrigger = document.getElementById('repeat-trigger');
     const repeatDropdown = document.getElementById('repeat-dropdown');
     repeatTrigger.onclick = (e) => { e.stopPropagation(); repeatDropdown.style.display = repeatDropdown.style.display === 'block' ? 'none' : 'block'; };
@@ -544,6 +553,7 @@
     function closeCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'none'; }
     function saveCustomRepeat() { const p = `Every ${document.getElementById('custom-repeat-num').value} ${document.getElementById('custom-repeat-freq').value}`; setRepeat(p); closeCustomRepeat(); }
 
+    // --- CALENDAR HELPERS ---
     function selectDay(el) { document.querySelectorAll('.ms-day-cell').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }
     function toggleAmPm(mode) { document.getElementById('btn-am').classList.toggle('selected', mode==='am'); document.getElementById('btn-pm').classList.toggle('selected', mode==='pm'); }
     function openMsDateTimeModal(c) { targetDateTimeColumn = c; document.getElementById('date-modal-overlay').style.display = 'flex'; }
@@ -556,6 +566,7 @@
         closeMsDateTimeModal(); 
     }
 
+    // --- FILES ---
     async function uploadFiles(input) {
         for (const file of input.files) {
             const p = `task_${currentTaskId}/${Date.now()}_${file.name}`;
@@ -568,21 +579,24 @@
         const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
         document.getElementById('file-list-display').innerHTML = data.map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
     }
-    // FIX FOR PROBLEM 4: Ensure file is deleted from both Storage and Database
+    
+    // FIX FOR PROBLEM 4: Surgically ensuring the DEL button re-renders the file list correctly
     async function deleteFile(id, path) { 
         await _supabase.storage.from('task-attachments').remove([path]); 
         await _supabase.from('task_files').delete().eq('id', id); 
         refreshFiles(); 
     }
 
-    // FIX FOR PROBLEM 3: Toggle Add/Remove My Day visibility and force refresh
+    // --- ACTIONS ---
+    // FIX FOR PROBLEM 3: Surgically forcing UI button toggle state and refreshing My Day folder
     async function toggleMyDay(v) { 
         await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
         
-        // Immediate UI toggle for the buttons
+        // Immediate UI feedback for buttons
         document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
         document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
         
+        // Immediate re-fetch if we are looking at the My Day folder
         if(currentCategoryId === 'my-day') {
             refreshTasks(); 
         }
