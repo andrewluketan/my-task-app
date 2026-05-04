@@ -590,7 +590,32 @@
     async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Saved"); }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
     async function syncPositions(e) { const updates = Array.from(e.from.querySelectorAll(':scope > [data-id]')).map((row, i) => _supabase.from('subtasks').update({ position: i + 1 }).eq('id', row.getAttribute('data-id'))); await Promise.all(updates); }
-    async function syncRecursivePositions(e) { const pid = e.to.getAttribute('data-parent') || currentTaskId; const updates = Array.from(e.to.querySelectorAll(':scope > .step-row-container')).map((row, i) => _supabase.from('subtasks').update({ position: i + 1, parent_id: pid }).eq('id', row.getAttribute('data-id'))); await Promise.all(updates); }
+    async function syncRecursivePositions(e) {
+        const normalizeId = (value) => {
+            if (value === null || value === undefined) return null;
+            const trimmed = String(value).trim();
+            if (!trimmed) return null;
+            return /^\d+$/.test(trimmed) ? Number(trimmed) : trimmed;
+        };
+
+        const reindexContainer = (container, parentId) =>
+            Array.from(container.querySelectorAll(':scope > .step-row-container')).map((row, i) =>
+                _supabase
+                    .from('subtasks')
+                    .update({ position: i + 1, parent_id: parentId })
+                    .eq('id', normalizeId(row.getAttribute('data-id')))
+            );
+
+        const toParentId = normalizeId(e.to.getAttribute('data-parent') ?? currentTaskId);
+        const fromParentId = normalizeId(e.from.getAttribute('data-parent') ?? currentTaskId);
+        const updates = [...reindexContainer(e.to, toParentId)];
+
+        if (e.from !== e.to) {
+            updates.push(...reindexContainer(e.from, fromParentId));
+        }
+
+        await Promise.all(updates);
+    }
     async function addCategory() { const n = prompt("Name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
     async function promptAddTask() { if(!currentCategoryId || currentCategoryId === 'my-day') return; const v = prompt("Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
     async function addNestedStep() { if(!currentTaskId) return; const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshRecursiveSteps(); } }
