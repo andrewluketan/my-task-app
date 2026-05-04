@@ -500,7 +500,7 @@
     }
 
     // --- DETAILS ---
-    // FIXED FOR PROBLEM 3: PERSISTENT UI STATE FROM DATABASE RECORD[cite: 9]
+    // SURGICAL FIX FOR PROBLEM 3: Persistent Reading from Database[cite: 10]
     async function openDetails(id, title) {
         currentTaskId = id; 
         document.getElementById('detail-task-title').innerText = title; 
@@ -510,8 +510,8 @@
         if(data) {
             quill.root.innerHTML = data.notes || '';
             
-            // Logic: Read actual boolean from DB to show correct button[cite: 9]
-            const isMyDay = data.is_myday === true;
+            // Fix: Show buttons based on the live database status, not a reset default[cite: 10]
+            const isMyDay = (data.is_myday === true);
             document.getElementById('add-myday-btn').style.display = isMyDay ? 'none' : 'flex';
             document.getElementById('remove-myday-btn').style.display = isMyDay ? 'flex' : 'none';
             
@@ -577,29 +577,29 @@
         const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
         document.getElementById('file-list-display').innerHTML = data.map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
     }
-
-    // FIXED FOR PROBLEM 4: DIRECT RE-RENDER CALLBACK[cite: 9]
+    
+    // SURGICAL FIX FOR PROBLEM 4: Added await to ensure UI refreshes correctly[cite: 10]
     async function deleteFile(id, path) { 
         await _supabase.storage.from('task-attachments').remove([path]); 
         const { error } = await _supabase.from('task_files').delete().eq('id', id); 
         if (!error) {
-            refreshFiles(); 
+            await refreshFiles(); 
         }
     }
 
     // --- ACTIONS ---
-    // FIXED FOR PROBLEM 3: SYNCING UI BAR AND REFRESHING LIVE MY DAY FOLDER VIEW[cite: 9]
+    // SURGICAL FIX FOR PROBLEM 3: Logic to force task folder refresh and UI swap[cite: 10]
     async function toggleMyDay(v) { 
         const { error } = await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
         
         if (!error) {
-            // Logic: Swap button visibility based on the new boolean[cite: 9]
+            // Logic: Immediate UI Swap in the detail pane[cite: 10]
             document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
             document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
             
-            // Logic: If currently viewing "My Day", task must appear/disappear instantly[cite: 9]
+            // Logic: If viewing the My Day folder, force the list to rebuild instantly[cite: 10]
             if (currentCategoryId === 'my-day') {
-                refreshTasks(); 
+                await refreshTasks(); 
             }
         }
     }
