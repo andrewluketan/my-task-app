@@ -366,7 +366,6 @@
                 </div>
             </div>
 
-            <!-- PROBLEM 3 AREA -->
             <div class="ms-section">
                 <div class="ms-item" id="add-myday-btn" onclick="toggleMyDay(true)"><span>☀️</span> Add to My Day</div>
                 <div class="ms-item" id="remove-myday-btn" style="display:none; color:var(--ms-light-blue); background:var(--ms-selected);">
@@ -375,7 +374,6 @@
                 </div>
             </div>
 
-            <!-- RECALLED TASK FUNCTIONS (PROBLEM 5 FIX) -->
             <div class="ms-section">
                 <div class="ms-item" onclick="openMsDateTimeModal('remind_at')"><span>⏰</span> Remind me <span id="remind-val" class="ms-date-display">None</span></div>
                 <div class="ms-item" onclick="openMsDateTimeModal('due_at')"><span>📅</span> Add due date <span id="due-val" class="ms-date-display">None</span></div>
@@ -390,7 +388,6 @@
                 </div>
             </div>
 
-            <!-- PROBLEM 4 AREA -->
             <div class="ms-section">
                 <div class="ms-item" onclick="document.getElementById('file-input').click()">
                     <span>📎</span> Add files <input type="file" id="file-input" multiple style="display:none" onchange="uploadFiles(this)">
@@ -449,20 +446,17 @@
     </div>
 
 <script>
-    // --- SUPABASE & STATE ---
     const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co'; 
     const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; 
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let currentCategoryId = null, currentTaskId = null, quill = null, targetDateTimeColumn = null;
 
-    // --- INIT ---
     window.onload = function() {
         quill = new Quill('#notes-editor', { theme: 'snow', placeholder: 'Add note' });
         refreshCategories();
     };
 
-    // --- SIDEBAR ---
     async function refreshCategories() {
         const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
         let html = `<div class="sidebar-item my-day-folder" id="my-day-btn" onclick="selectCategory('my-day', '☀️ My Day')">📋 My Day</div><div style="border-bottom: 1px solid var(--border); margin: 0 10px;"></div>`;
@@ -480,7 +474,6 @@
         closeDetails(); 
     }
 
-    // --- TASKS ---
     async function refreshTasks() {
         if (!currentCategoryId) return;
         let q = (currentCategoryId === 'my-day') ? 
@@ -496,7 +489,7 @@
         Sortable.create(document.getElementById('main-task-container'), { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
     }
 
-    // --- DETAILS: STRICT SYNC (PROBLEM 3 FIX) ---
+    // --- FIX FOR PROBLEM 3 (PERSISTENCE) ---
     async function openDetails(id, title) {
         currentTaskId = id; 
         document.getElementById('detail-task-title').innerText = title; 
@@ -506,12 +499,11 @@
         if(data) {
             quill.root.innerHTML = data.notes || '';
             
-            // Logic: Read boolean to ensure persistent button state
+            // Fix: Check actual database boolean before displaying buttons
             const isMyDay = (data.is_myday === true);
             document.getElementById('add-myday-btn').style.display = isMyDay ? 'none' : 'flex';
             document.getElementById('remove-myday-btn').style.display = isMyDay ? 'flex' : 'none';
             
-            // Logic: Restore text values for dates
             document.getElementById('remind-val').innerText = data.remind_at ? 'Set' : 'None';
             document.getElementById('due-val').innerText = data.due_at ? 'Set' : 'None';
             document.getElementById('repeat-val').innerText = data.repeat_pattern || 'None';
@@ -520,16 +512,16 @@
         }
     }
 
-    // --- ACTIONS: SYNCED PERSISTENCE (PROBLEM 3 & 4 FIX) ---
+    // --- FIX FOR PROBLEM 3 & 4 (SYNC & DELETION) ---
     async function toggleMyDay(v) { 
-        // Force database completion before UI change
+        // Logic: Wait for database update to finish
         const { error } = await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
         
         if (!error) {
             document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
             document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
             
-            // Fix: Rebuild folder view if adding/removing from My Day
+            // Fix: Force a rebuild of the "My Day" list immediately[cite: 8]
             if (currentCategoryId === 'my-day') {
                 await refreshTasks(); 
             }
@@ -537,7 +529,7 @@
     }
 
     async function deleteFile(id, path) { 
-        // Sequential removal ensures correct screen redraw
+        // Logic: Ensure storage and DB removal finish before redraw
         await _supabase.storage.from('task-attachments').remove([path]); 
         const { error } = await _supabase.from('task_files').delete().eq('id', id); 
         if (!error) {
@@ -545,7 +537,7 @@
         }
     }
 
-    // --- STEPS, REPEAT, CALENDAR (STABLE LOGIC) ---
+    // --- REMAINING STABLE FUNCTIONS ---
     async function refreshRecursiveSteps() {
         if (!currentTaskId) return;
         const { data } = await _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId !== 'my-day' ? currentCategoryId : null).order('position', { ascending: true });
@@ -600,7 +592,7 @@
     async function addCategory() { const n = prompt("Name:"); if(n) { await _supabase.from('categories').insert([{ name: n }]); refreshCategories(); } }
     async function promptAddTask() { if(!currentCategoryId || currentCategoryId === 'my-day') return; const v = prompt("Task:"); if(v) { await _supabase.from('subtasks').insert([{ category_id: currentCategoryId, task_text: v, position: 999 }]); refreshTasks(); } }
     async function addNestedStep() { if(!currentTaskId) return; const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshRecursiveSteps(); } }
-    window.onclick = () => { if(repeatDropdown) repeatDropdown.style.display = 'none'; };
+    window.onclick = () => { if(typeof repeatDropdown !== 'undefined' && repeatDropdown) repeatDropdown.style.display = 'none'; };
 </script>
 </body>
 </html>
