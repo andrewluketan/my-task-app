@@ -482,7 +482,6 @@
     async function refreshTasks() {
         if (!currentCategoryId) return;
         
-        // Surcharge query logic: If active folder is 'my-day', query ONLY by is_myday flag and ignore category_id.
         const q = currentCategoryId === 'my-day' ? 
             _supabase.from('subtasks').select('*').eq('is_myday', true) : 
             _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
@@ -499,13 +498,21 @@
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) {
             quill.root.innerHTML = data.notes || '';
-            document.getElementById('add-myday-btn').style.display = data.is_myday ? 'none' : 'flex';
-            document.getElementById('remove-myday-btn').style.display = data.is_myday ? 'flex' : 'none';
+            
+            // Fixed connection: Sync the My Day button state when task details open
+            updateMyDayUI(data.is_myday);
+            
             document.getElementById('remind-val').innerText = data.remind_at ? 'Sun, May 3, 11:33 pm' : 'None';
             document.getElementById('due-val').innerText = data.due_at ? 'Sun, May 3, 11:33 pm' : 'None';
             document.getElementById('repeat-val').innerText = data.repeat_pattern || 'None';
             refreshRecursiveSteps(); refreshFiles();
         }
+    }
+
+    // Surgical UI Helper to handle My Day visibility logic
+    function updateMyDayUI(isMyDay) {
+        document.getElementById('add-myday-btn').style.display = isMyDay ? 'none' : 'flex';
+        document.getElementById('remove-myday-btn').style.display = isMyDay ? 'flex' : 'none';
     }
 
     async function refreshRecursiveSteps() {
@@ -564,10 +571,9 @@
     // --- ACTIONS ---
     async function toggleMyDay(v) { 
         await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
-        openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); 
         
-        // Surgical fix: Trigger a refresh of the task list immediately after toggling 
-        // to ensure the task appears in (or disappears from) the My Day view.
+        // Surgical fix: Trigger UI updates immediately after toggle
+        updateMyDayUI(v);
         refreshTasks(); 
     }
 
