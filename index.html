@@ -183,7 +183,6 @@
         .circle-check.checked { background: #4caf50; border-color: #4caf50; }
         .drag-handle { cursor: grab; color: #ccc; font-size: 20px; padding: 5px; }
 
-        /* MODAL SYSTEM */
         .modal-overlay { 
             position: fixed; 
             top: 0; 
@@ -229,7 +228,6 @@
 
         .repeat-option:hover { background: #f3f4f6; }
 
-        /* CALENDAR MODAL STYLING */
         .ms-date-modal { width: 300px; }
         .ms-date-modal .header { 
             display: flex; 
@@ -350,7 +348,6 @@
         <div id="main-task-container" class="task-list-container"></div>
     </div>
 
-    <!-- RIGHT DETAIL PANE -->
     <div id="detail-pane">
         <div class="ms-title-header" style="padding: 20px 20px 10px 20px; display:flex; align-items:center; gap:10px;">
             <div class="circle-check"></div>
@@ -399,7 +396,6 @@
         </div>
     </div>
 
-    <!-- FOOTER -->
     <div id="global-actions">
         <button class="btn-bottom" onclick="addCategory()">+ New List</button>
         <button class="btn-bottom" onclick="promptAddTask()">+ Add Task</button>
@@ -431,12 +427,8 @@
             <div class="header"><div>May 2026</div><div style="display:flex; gap:10px;"><button>▲</button><button>▼</button></div></div>
             <div class="ms-calendar" id="ms-calendar-grid">
                 <div class="ms-day-header">Su</div><div class="ms-day-header">Mo</div><div class="ms-day-header">Tu</div><div class="ms-day-header">We</div><div class="ms-day-header">Th</div><div class="ms-day-header">Fr</div><div class="ms-day-header">Sa</div>
-                <!-- Row 1 -->
                 <div class="ms-day-cell other-month">26</div><div class="ms-day-cell other-month">27</div><div class="ms-day-cell other-month">28</div><div class="ms-day-cell other-month">29</div><div class="ms-day-cell other-month">30</div><div class="ms-day-cell" onclick="selectDay(this)">1</div><div class="ms-day-cell" onclick="selectDay(this)">2</div>
-                <!-- Row 2 -->
                 <div class="ms-day-cell selected" onclick="selectDay(this)">3</div><div class="ms-day-cell" onclick="selectDay(this)">4</div><div class="ms-day-cell" onclick="selectDay(this)">5</div><div class="ms-day-cell" onclick="selectDay(this)">6</div><div class="ms-day-cell" onclick="selectDay(this)">7</div><div class="ms-day-cell" onclick="selectDay(this)">8</div><div class="ms-day-cell" onclick="selectDay(this)">9</div>
-                <!-- Row 3 -->
-                <div class="ms-day-cell" onclick="selectDay(this)">10</div><div class="ms-day-cell" onclick="selectDay(this)">11</div><div class="ms-day-cell" onclick="selectDay(this)">12</div><div class="ms-day-cell" onclick="selectDay(this)">13</div><div class="ms-day-cell" onclick="selectDay(this)">14</div><div class="ms-day-cell" onclick="selectDay(this)">15</div><div class="ms-day-cell" onclick="selectDay(this)">16</div>
             </div>
             <div class="ms-time-selector">
                 <input type="number" id="ms-hr" value="11" class="ms-time-input"> : <input type="number" id="ms-min" value="33" class="ms-time-input">
@@ -450,20 +442,17 @@
     </div>
 
 <script>
-    // --- SUPABASE & STATE ---
     const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co'; 
     const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; 
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let currentCategoryId = null, currentTaskId = null, quill = null, targetDateTimeColumn = null;
 
-    // --- INIT ---
     window.onload = function() {
         quill = new Quill('#notes-editor', { theme: 'snow', placeholder: 'Add note' });
         refreshCategories();
     };
 
-    // --- SIDEBAR ---
     async function refreshCategories() {
         const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
         let html = `<div class="sidebar-item my-day-folder" id="my-day-btn" onclick="selectCategory('my-day', '☀️ My Day')">📋 My Day</div><div style="border-bottom: 1px solid var(--border); margin: 0 10px;"></div>`;
@@ -476,22 +465,18 @@
         document.getElementById('task-list-header').innerText = name; 
         document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
         if(id === 'my-day') document.getElementById('my-day-btn').classList.add('active');
-        document.getElementById('main-task-container').innerHTML = '';
         refreshTasks(); 
         closeDetails(); 
     }
 
-    // --- TASKS ---
     async function refreshTasks() {
         if (!currentCategoryId) return;
-        let q;
-        if (currentCategoryId === 'my-day') {
-            q = _supabase.from('subtasks').select('*').eq('is_myday', true).is('parent_id', null);
-        } else {
-            q = _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
-        }
+        let q = (currentCategoryId === 'my-day') ? 
+            _supabase.from('subtasks').select('*').eq('is_myday', true).is('parent_id', null) : 
+            _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
+        
         const { data, error } = await q.order('position', { ascending: true });
-        if (error) { console.error("Fetch Error:", error); return; }
+        if (error) return;
 
         document.getElementById('main-task-container').innerHTML = data.map(t => `
             <div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div></div>`).join('');
@@ -499,25 +484,52 @@
         Sortable.create(document.getElementById('main-task-container'), { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
     }
 
-    // --- DETAILS: SURGICAL FIX FOR PERSISTENCE (PROBLEM 3) ---
     async function openDetails(id, title) {
-        currentTaskId = id; 
-        document.getElementById('detail-task-title').innerText = title; 
-        document.getElementById('detail-pane').style.display = 'flex';
+        currentTaskId = id; document.getElementById('detail-task-title').innerText = title; document.getElementById('detail-pane').style.display = 'flex';
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) {
             quill.root.innerHTML = data.notes || '';
-            
-            // Logic: Set buttons based on actual DB boolean to ensure persistence[cite: 9]
+            // FIXED PROBLEM 3: Persistent check of DB boolean[cite: 8]
             const isMyDay = (data.is_myday === true);
             document.getElementById('add-myday-btn').style.display = isMyDay ? 'none' : 'flex';
             document.getElementById('remove-myday-btn').style.display = isMyDay ? 'flex' : 'none';
             
-            document.getElementById('remind-val').innerText = data.remind_at ? 'Sun, May 3, 11:33 pm' : 'None';
-            document.getElementById('due-val').innerText = data.due_at ? 'Sun, May 3, 11:33 pm' : 'None';
+            document.getElementById('remind-val').innerText = data.remind_at ? 'Set' : 'None';
+            document.getElementById('due-val').innerText = data.due_at ? 'Set' : 'None';
             document.getElementById('repeat-val').innerText = data.repeat_pattern || 'None';
             refreshRecursiveSteps(); refreshFiles();
         }
+    }
+
+    async function toggleMyDay(v) { 
+        // FIXED PROBLEM 3: Await DB then force folder sync[cite: 8]
+        const { error } = await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
+        if (!error) {
+            document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
+            document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
+            if (currentCategoryId === 'my-day') await refreshTasks(); 
+        }
+    }
+
+    async function deleteFile(id, path) { 
+        // FIXED PROBLEM 4: Sequential await[cite: 8]
+        await _supabase.storage.from('task-attachments').remove([path]); 
+        const { error } = await _supabase.from('task_files').delete().eq('id', id); 
+        if (!error) await refreshFiles();
+    }
+
+    async function refreshFiles() {
+        const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
+        document.getElementById('file-list-display').innerHTML = (data || []).map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
+    }
+
+    async function uploadFiles(input) {
+        for (const file of input.files) {
+            const p = `task_${currentTaskId}/${Date.now()}_${file.name}`;
+            await _supabase.storage.from('task-attachments').upload(p, file);
+            await _supabase.from('task_files').insert([{ task_id: currentTaskId, file_name: file.name, file_path: p }]);
+        }
+        await refreshFiles();
     }
 
     async function refreshRecursiveSteps() {
@@ -540,7 +552,7 @@
     if(repeatTrigger) repeatTrigger.onclick = (e) => { e.stopPropagation(); repeatDropdown.style.display = repeatDropdown.style.display === 'block' ? 'none' : 'block'; };
 
     function setRepeat(val) { document.getElementById('repeat-val').innerText = val; _supabase.from('subtasks').update({ repeat_pattern: val }).eq('id', currentTaskId); repeatDropdown.style.display = 'none'; }
-    function openCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'flex'; if(repeatDropdown) repeatDropdown.style.display = 'none'; }
+    function openCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'flex'; repeatDropdown.style.display = 'none'; }
     function closeCustomRepeat() { document.getElementById('custom-repeat-modal').style.display = 'none'; }
     function saveCustomRepeat() { const p = `Every ${document.getElementById('custom-repeat-num').value} ${document.getElementById('custom-repeat-freq').value}`; setRepeat(p); closeCustomRepeat(); }
 
@@ -549,42 +561,9 @@
     function openMsDateTimeModal(c) { targetDateTimeColumn = c; document.getElementById('date-modal-overlay').style.display = 'flex'; }
     function closeMsDateTimeModal() { document.getElementById('date-modal-overlay').style.display = 'none'; }
     async function saveMsDateTime() { 
-        const hr = document.getElementById('ms-hr').value; const min = document.getElementById('ms-min').value;
-        const ampm = document.querySelector('.ms-am-pm .selected').innerText;
-        await _supabase.from('subtasks').update({ [targetDateTimeColumn]: `2026-05-03 ${hr}:${min}:00` }).eq('id', currentTaskId); 
-        document.getElementById(targetDateTimeColumn === 'remind_at' ? 'remind-val' : 'due-val').innerText = `Sun, May 3, ${hr}:${min} ${ampm}`;
+        await _supabase.from('subtasks').update({ [targetDateTimeColumn]: new Date().toISOString() }).eq('id', currentTaskId); 
+        document.getElementById(targetDateTimeColumn === 'remind_at' ? 'remind-val' : 'due-val').innerText = `Set`;
         closeMsDateTimeModal(); 
-    }
-
-    // --- FILES: SEQUENTIAL DELETE (PROBLEM 4 FIX) ---
-    async function uploadFiles(input) {
-        for (const file of input.files) {
-            const p = `task_${currentTaskId}/${Date.now()}_${file.name}`;
-            const { error } = await _supabase.storage.from('task-attachments').upload(p, file);
-            if(!error) await _supabase.from('task_files').insert([{ task_id: currentTaskId, file_name: file.name, file_path: p }]);
-        }
-        await refreshFiles();
-    }
-    async function refreshFiles() {
-        const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
-        document.getElementById('file-list-display').innerHTML = (data || []).map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
-    }
-    async function deleteFile(id, path) { 
-        // Logic: Wait for removal to finish before refresh[cite: 9]
-        await _supabase.storage.from('task-attachments').remove([path]); 
-        const { error } = await _supabase.from('task_files').delete().eq('id', id); 
-        if (!error) await refreshFiles();[cite: 9]
-    }
-
-    // --- ACTIONS: SYNCED MY DAY (PROBLEM 3 FIX) ---
-    async function toggleMyDay(v) { 
-        // Logic: Await DB completion then force folder rebuild[cite: 9]
-        const { error } = await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
-        if (!error) {
-            document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
-            document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
-            if (currentCategoryId === 'my-day') await refreshTasks();[cite: 9]
-        }
     }
 
     async function updateText(id, el) { if(id) await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
