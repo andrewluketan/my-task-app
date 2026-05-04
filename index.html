@@ -85,7 +85,7 @@
         .ms-item { 
             display: flex; 
             align-items: center; 
-            gap: 15px; 
+ gap: 15px; 
             padding: 12px 18px; 
             font-size: 14px; 
             border-bottom: 1px solid #f6f6f6; 
@@ -478,14 +478,19 @@
         refreshTasks(); closeDetails(); 
     }
 
-    // --- TASKS (SURGICALLY FIXED My Day View) ---
+    // --- TASKS ---
     async function refreshTasks() {
         if (!currentCategoryId) return;
         
-        const q = currentCategoryId === 'my-day' ? 
-            _supabase.from('subtasks').select('*').eq('is_myday', true) : 
-            _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
-            
+        // SURGICAL FIX: When My Day is active, query ONLY tasks where is_myday is true.
+        // Also ensuring we only pull parent tasks (is('parent_id', null)) to avoid step clutter.
+        let q;
+        if (currentCategoryId === 'my-day') {
+            q = _supabase.from('subtasks').select('*').eq('is_myday', true).is('parent_id', null);
+        } else {
+            q = _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
+        }
+        
         const { data } = await q.order('position', { ascending: true });
         document.getElementById('main-task-container').innerHTML = data.map(t => `
             <div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div></div>`).join('');
@@ -498,21 +503,13 @@
         const { data } = await _supabase.from('subtasks').select('*').eq('id', id).single();
         if(data) {
             quill.root.innerHTML = data.notes || '';
-            
-            // Fixed connection: Sync the My Day button state when task details open
-            updateMyDayUI(data.is_myday);
-            
+            document.getElementById('add-myday-btn').style.display = data.is_myday ? 'none' : 'flex';
+            document.getElementById('remove-myday-btn').style.display = data.is_myday ? 'flex' : 'none';
             document.getElementById('remind-val').innerText = data.remind_at ? 'Sun, May 3, 11:33 pm' : 'None';
             document.getElementById('due-val').innerText = data.due_at ? 'Sun, May 3, 11:33 pm' : 'None';
             document.getElementById('repeat-val').innerText = data.repeat_pattern || 'None';
             refreshRecursiveSteps(); refreshFiles();
         }
-    }
-
-    // Surgical UI Helper to handle My Day visibility logic
-    function updateMyDayUI(isMyDay) {
-        document.getElementById('add-myday-btn').style.display = isMyDay ? 'none' : 'flex';
-        document.getElementById('remove-myday-btn').style.display = isMyDay ? 'flex' : 'none';
     }
 
     async function refreshRecursiveSteps() {
@@ -569,14 +566,7 @@
     async function deleteFile(id, path) { await _supabase.storage.from('task-attachments').remove([path]); await _supabase.from('task_files').delete().eq('id', id); refreshFiles(); }
 
     // --- ACTIONS ---
-    async function toggleMyDay(v) { 
-        await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
-        
-        // Surgical fix: Trigger UI updates immediately after toggle
-        updateMyDayUI(v);
-        refreshTasks(); 
-    }
-
+    async function toggleMyDay(v) { await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); if(currentCategoryId==='my-day') refreshTasks(); }
     async function updateText(id, el) { if(id) await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
     async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Saved"); }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
