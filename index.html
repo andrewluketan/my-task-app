@@ -560,20 +560,27 @@
         document.getElementById('file-list-display').innerHTML = data.map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
     }
 
-    // SURGICAL FIX FOR PROBLEM 4: Added explicit re-render of file list after DB deletion
+    // SURGICAL FIX FOR PROBLEM 4: Added explicit re-render call after DB confirms deletion[cite: 7]
     async function deleteFile(id, path) { 
-        const { error: storageError } = await _supabase.storage.from('task-attachments').remove([path]); 
-        const { error: dbError } = await _supabase.from('task_files').delete().eq('id', id); 
-        if (!dbError) { refreshFiles(); }
+        await _supabase.storage.from('task-attachments').remove([path]); 
+        const { error } = await _supabase.from('task_files').delete().eq('id', id); 
+        if (!error) { 
+            refreshFiles(); 
+        }
     }
 
-    // SURGICAL FIX FOR PROBLEM 3: Added manual DOM toggles to swap button visibility instantly
+    // SURGICAL FIX FOR PROBLEM 3: Added manual DOM style toggles to swap button visibility immediately[cite: 7]
     async function toggleMyDay(v) { 
         const { error } = await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
         if (!error) {
+            // Immediate UI feedback for the buttons[cite: 7]
             document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
             document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
-            if(currentCategoryId === 'my-day') { refreshTasks(); }
+            
+            // If currently in the My Day list, refresh that center column list[cite: 7]
+            if(currentCategoryId === 'my-day') { 
+                refreshTasks(); 
+            }
         }
     }
 
