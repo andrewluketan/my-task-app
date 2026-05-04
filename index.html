@@ -471,26 +471,45 @@
         document.getElementById('category-list').innerHTML = html;
     }
 
+    // FIX FOR PROBLEM 1: Force container clear on selection to prevent data carry-over
     async function selectCategory(id, name) { 
-        currentCategoryId = id; document.getElementById('task-list-header').innerText = name; 
+        currentCategoryId = id; 
+        document.getElementById('task-list-header').innerText = name; 
         document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
         if(id === 'my-day') document.getElementById('my-day-btn').classList.add('active');
-        refreshTasks(); closeDetails(); 
+        
+        // Immediate visual clear of tasks to reset the view
+        document.getElementById('main-task-container').innerHTML = '';
+        
+        refreshTasks(); 
+        closeDetails(); 
     }
 
-    // --- TASKS (Surgically Fixed Filter Logic) ---
+    // --- TASKS (SURGICAL FIX FOR PROBLEM 1 & 2) ---
     async function refreshTasks() {
         if (!currentCategoryId) return;
         
-        // FIX: Explicitly check for is_myday when currentCategoryId is 'my-day'
-        // This prevents the center column from erroneously displaying items from previous categories
-        const q = currentCategoryId === 'my-day' ? 
-            _supabase.from('subtasks').select('*').eq('is_myday', true) : 
-            _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
-            
-        const { data } = await q.order('position', { ascending: true });
+        // REWRITTEN QUERY: Enforcing strict isolation between category filter and myday filter
+        let q;
+        if (currentCategoryId === 'my-day') {
+            // Strictly query ONLY tasks flagged for My Day, regardless of category_id
+            q = _supabase.from('subtasks').select('*').eq('is_myday', true).is('parent_id', null);
+        } else {
+            // Strictly query ONLY tasks belonging to the current category_id
+            q = _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
+        }
+        
+        const { data, error } = await q.order('position', { ascending: true });
+        
+        if (error) {
+            console.error("Fetch Error:", error);
+            return;
+        }
+
+        // Render the results (Empty array if nothing matches the strict filters)
         document.getElementById('main-task-container').innerHTML = data.map(t => `
             <div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div></div>`).join('');
+        
         Sortable.create(document.getElementById('main-task-container'), { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
     }
 
@@ -562,13 +581,12 @@
     }
     async function deleteFile(id, path) { await _supabase.storage.from('task-attachments').remove([path]); await _supabase.from('task_files').delete().eq('id', id); refreshFiles(); }
 
-    // --- ACTIONS (Surgically Fixed Toggle) ---
+    // --- ACTIONS ---
     async function toggleMyDay(v) { 
         await _supabase.from('subtasks').update({ is_myday: v }).eq('id', currentTaskId); 
         openDetails(currentTaskId, document.getElementById('detail-task-title').innerText); 
         
-        // FIX: Ensure the center column is refreshed if we are currently looking at 'my-day'
-        // This removes the task from the list immediately when deselected
+        // SURGICAL FIX FOR PROBLEM 2: Immediate re-fetch if we are in the My Day folder
         if(currentCategoryId === 'my-day') {
             refreshTasks(); 
         }
