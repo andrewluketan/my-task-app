@@ -640,6 +640,7 @@
         document.querySelectorAll('#steps-forced-container, .nested-step-group').forEach(g => Sortable.create(g, { group: 'steps', animation: 150, handle: '.drag-handle', onEnd: syncRecursivePositions }));
     }
 
+    
     function renderSteps(all, pid, target) {
         all.filter(t => t.parent_id === pid).forEach(t => {
             const d = document.createElement('div'); d.className = 'step-row-container'; d.setAttribute('data-id', t.id);
