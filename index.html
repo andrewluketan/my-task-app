@@ -656,7 +656,6 @@
             <div class="step-row">
                 <div class="drag-handle">⋮⋮</div>
                 <div class="${checkClass}" onclick="toggleComplete('${t.id}', ${isDone})"></div>
-                
                 <div style="flex:1; color: black;" class="${textClass}" contenteditable="true" onblur="updateText('${t.id}', this)">
                     ${t.task_text}
                 </div>
@@ -668,7 +667,6 @@
         renderSteps(all, t.id, d.querySelector('.nested-step-group'));
     });
 }
-    }
 
     // --- REPEAT (PROBLEM 5 FIX) ---
     const repeatTrigger = document.getElementById('repeat-trigger');
