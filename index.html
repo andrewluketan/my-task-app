@@ -642,11 +642,32 @@
 
     
     function renderSteps(all, pid, target) {
-        all.filter(t => t.parent_id === pid).forEach(t => {
-            const d = document.createElement('div'); d.className = 'step-row-container'; d.setAttribute('data-id', t.id);
-            d.innerHTML = `<div class="step-row"><div class="drag-handle">⋮⋮</div><div class="circle-check"></div><div style="flex:1" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div></div><div class="nested-step-group" data-parent="${t.id}"></div>`;
-            target.appendChild(d); renderSteps(all, t.id, d.querySelector('.nested-step-group'));
-        });
+    all.filter(t => t.parent_id === pid).forEach(t => {
+        const d = document.createElement('div'); 
+        d.className = 'step-row-container'; 
+        d.setAttribute('data-id', t.id);
+        
+        // This checks the database value to decide if it should be green/struck-through
+        const isDone = t.is_completed === true; 
+        const checkClass = isDone ? 'circle-check completed' : 'circle-check';
+        const textClass = isDone ? 'strikethrough' : '';
+
+        d.innerHTML = `
+            <div class="step-row">
+                <div class="drag-handle">⋮⋮</div>
+                <div class="${checkClass}" onclick="toggleComplete('${t.id}', ${isDone})"></div>
+                
+                <div style="flex:1; color: black;" class="${textClass}" contenteditable="true" onblur="updateText('${t.id}', this)">
+                    ${t.task_text}
+                </div>
+            </div>
+            <div class="nested-step-group" data-parent="${t.id}"></div>
+        `;
+        
+        target.appendChild(d); 
+        renderSteps(all, t.id, d.querySelector('.nested-step-group'));
+    });
+}
     }
 
     // --- REPEAT (PROBLEM 5 FIX) ---
