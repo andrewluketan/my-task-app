@@ -334,6 +334,49 @@
             color: var(--main-blue); 
             flex: 1; 
         }
+
+        #file-list-display {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: #fff;
+        }
+
+        .file-name {
+            flex: 1;
+            min-width: 0;
+            color: #374151;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-del-btn {
+            border: 1px solid #fecaca;
+            background: #fff1f2;
+            color: #dc2626;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .file-del-btn:hover {
+            background: #ffe4e6;
+        }
     </style>
 </head>
 <body>
@@ -577,8 +620,16 @@
     }
     async function refreshFiles() {
         const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
+        const escapeHtml = (v) =>
+            String(v ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         document.getElementById('file-list-display').innerHTML = (data || []).map(file => {
-            return `<button onclick="window.deleteFile('${file.id}')">DEL</button>`;
+            const fileName = escapeHtml(file.file_name || file.name || 'Unnamed file');
+            return `<div class="file-item"><span class="file-name">${fileName}</span><button class="file-del-btn" onclick="window.deleteFile('${file.id}')">Del</button></div>`;
         }).join('');
     }
 
