@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang=""en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -337,7 +337,6 @@
     </style>
 </head>
 <body>
-
     <div id="sidebar">
         <div style="padding: 20px;">
             <input type="text" placeholder="Search" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;">
@@ -450,12 +449,25 @@
     </div>
 
 <script>
+    let currentTaskId = null;
+    window.deleteFile = async function(id) {
+        if (!confirm("Delete this file?")) return;
+        const { error } = await _supabase.from("task_files").delete().eq("id", id);
+        if (error) {
+            alert("Error: " + error.message);
+        } else {
+            refreshFiles();
+        }
+    };
+
     // --- SUPABASE & STATE ---
-    const SUPABASE_URL = 'https://jzgdbwhgaaxjsopobxrw.supabase.co'; 
-    const SUPABASE_KEY = 'sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l'; 
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    
-    let currentCategoryId = null, currentTaskId = null, quill = null, targetDateTimeColumn = null;
+    const SUPABASE_URL = "https://jzgdbwhgaaxjsopobxrw.supabase.co";
+    // Preserve this key in future file versions unless explicitly replaced.
+    const SUPABASE_KEY = "sb_publishable_t6RR-NqEVb66EX_O3Q8x7A_DGJ9xR3l";
+    let _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let currentCategoryId = null;
+    let quill = null;
+    let targetDateTimeColumn = null;
 
     // --- INIT ---
     window.onload = function() {
@@ -486,7 +498,7 @@
         if (!currentCategoryId) return;
         let q;
         if (currentCategoryId === 'my-day') {
-            q = _supabase.from('subtasks').select('*').eq('is_myday', true).is('parent_id', null);
+            q = _supabase.from('subtasks').select('*').eq('is_myday', true);
         } else {
             q = _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
         }
@@ -565,12 +577,9 @@
     }
     async function refreshFiles() {
         const { data } = await _supabase.from('task_files').select('*').eq('task_id', currentTaskId);
-        document.getElementById('file-list-display').innerHTML = data.map(f => `<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; background:#fff; padding:5px; border:1px solid #eee; border-radius:4px;"><span>📄 ${f.file_name}</span><button onclick="deleteFile(${f.id},'${f.file_path}')" style="color:red; border:none; background:none; cursor:pointer;">DEL</button></div>`).join('');
-    }
-    async function deleteFile(id, path) { 
-        await _supabase.storage.from('task-attachments').remove([path]); 
-        await _supabase.from('task_files').delete().eq('id', id); 
-        refreshFiles(); // Forced refresh for Problem 4
+        document.getElementById('file-list-display').innerHTML = (data || []).map(file => {
+            return `<button onclick="window.deleteFile('${file.id}')">DEL</button>`;
+        }).join('');
     }
 
     // --- ACTIONS (PROBLEM 3 FIX) ---
@@ -581,13 +590,31 @@
         document.getElementById('add-myday-btn').style.display = v ? 'none' : 'flex';
         document.getElementById('remove-myday-btn').style.display = v ? 'flex' : 'none';
         
-        if(currentCategoryId === 'my-day') {
-            refreshTasks(); 
+        if (currentCategoryId) {
+            await refreshTasks();
         }
     }
 
     async function updateText(id, el) { if(id) await _supabase.from('subtasks').update({ task_text: el.innerText }).eq('id', id); }
-    async function saveNotes() { if(!currentTaskId) return; await _supabase.from('subtasks').update({ notes: quill.root.innerHTML }).eq('id', currentTaskId); alert("Saved"); }
+    async function saveNotes() {
+        taskId = currentTaskId;
+        if (!taskId) return;
+
+        const notesContent = String(quill?.root?.innerHTML ?? '');
+        console.log('Notes content type:', typeof notesContent);
+
+        const { error } = await _supabase
+            .from('subtasks')
+            .update({ notes: notesContent })
+            .eq('id', taskId);
+
+        if (error) {
+            alert('Error: ' + error.message);
+            return;
+        }
+
+        alert('Notes Saved!');
+    }
     function closeDetails() { document.getElementById('detail-pane').style.display = 'none'; }
     async function syncPositions(e) { const updates = Array.from(e.from.querySelectorAll(':scope > [data-id]')).map((row, i) => _supabase.from('subtasks').update({ position: i + 1 }).eq('id', row.getAttribute('data-id'))); await Promise.all(updates); }
     async function syncRecursivePositions(e) {
