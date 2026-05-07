@@ -821,6 +821,31 @@
     async function addNestedStep() { if(!currentTaskId) return; const v = prompt("Step:"); if(v) { await _supabase.from('subtasks').insert([{ parent_id: currentTaskId, category_id: currentCategoryId!=='my-day'?currentCategoryId:null, task_text: v, position: 999 }]); refreshRecursiveSteps(); } }
 
     window.onclick = () => { if(repeatDropdown) repeatDropdown.style.display = 'none'; };
+
+    async function toggleComplete(id, currentStatus) {
+    // 1. Calculate the new status
+    const newStatus = !currentStatus;
+    
+    // 2. Update Supabase
+    // Note: Ensure your table name is 'tasks'. If it's 'task_files' or something else, change it below.
+    const { error } = await supabase
+        .from('tasks') 
+        .update({ is_completed: newStatus })
+        .eq('id', id);
+
+    if (error) {
+        console.error("Supabase Update Error:", error);
+        alert("Failed to update status. Check console.");
+    } else {
+        // 3. Success! Reload the data to show the green circle and strike-through
+        // This must match the function you use to load your tasks (usually fetchAndRenderData)
+        if (typeof fetchAndRenderData === 'function') {
+            fetchAndRenderData();
+        } else {
+            location.reload(); // Fallback: refresh the whole page if the function name is different
+        }
+    }
+}
 </script>
 </body>
 </html>
