@@ -869,8 +869,7 @@
         await refreshRecursiveSteps();
     }
 
-    async function toggleTaskComplete(id, currentStatus, event) {
-        if (event) event.stopPropagation();
+    async function toggleTaskComplete(id, currentStatus) {
         const newStatus = !currentStatus;
         const { error } = await _supabase
             .from('tasks')
@@ -886,8 +885,7 @@
         await refreshTasks();
     }
 
-    async function toggleListComplete(id, currentStatus, event) {
-        if (event) event.stopPropagation();
+    async function toggleListComplete(id, currentStatus) {
         const newStatus = !currentStatus;
         const { error } = await _supabase
             .from('categories')
