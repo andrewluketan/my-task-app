@@ -109,9 +109,6 @@
             font-size: 16px; 
             color: #374151; 
             border-bottom: 1px solid rgba(0,0,0,0.05); 
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
 
         .sidebar-item.active { 
@@ -587,9 +584,10 @@
 
     // --- SIDEBAR ---
     async function refreshCategories() {
-        const { data, error } = await _supabase.from('lists').select('*').order('created_at', { ascending: true });
-        if (error) { console.error("Fetch Error:", error); return; }
-        renderLists(data || []);
+        const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
+        let html = `<div class="sidebar-item my-day-folder" id="my-day-btn" onclick="selectCategory('my-day', '☀️ My Day')">📋 My Day</div><div style="border-bottom: 1px solid var(--border); margin: 0 10px;"></div>`;
+        html += data.map(c => `<div class="sidebar-item" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">📋 ${c.name}</div>`).join('');
+        document.getElementById('category-list').innerHTML = html;
     }
 
     async function selectCategory(id, name) { 
@@ -607,39 +605,17 @@
         if (!currentCategoryId) return;
         let q;
         if (currentCategoryId === 'my-day') {
-            q = _supabase.from('tasks').select('*').eq('is_myday', true);
+            q = _supabase.from('subtasks').select('*').eq('is_myday', true);
         } else {
-            q = _supabase.from('tasks').select('*').eq('list_id', currentCategoryId);
+            q = _supabase.from('subtasks').select('*').eq('category_id', currentCategoryId).is('parent_id', null);
         }
         const { data, error } = await q.order('position', { ascending: true });
         if (error) { console.error("Fetch Error:", error); return; }
-        renderTasks(data || []);
+
+        document.getElementById('main-task-container').innerHTML = data.map(t => `
+            <div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div></div>`).join('');
         
         Sortable.create(document.getElementById('main-task-container'), { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
-    }
-
-    function renderLists(allLists) {
-        const escapeSingleQuotes = (value) => String(value ?? '').replace(/'/g, "\\'");
-        let html = `<div class="sidebar-item my-day-folder" id="my-day-btn" onclick="selectCategory('my-day', '☀️ My Day')">📋 My Day</div><div style="border-bottom: 1px solid var(--border); margin: 0 10px;"></div>`;
-        html += allLists.map(l => {
-            const isDone = l.is_completed === true;
-            const checkClass = isDone ? 'circle-check completed' : 'circle-check';
-            const textClass = isDone ? 'strikethrough' : '';
-            const safeName = escapeSingleQuotes(l.name);
-            return `<div class="sidebar-item" onclick="selectCategory(${l.id}, '${safeName}')"><div class="${checkClass}" onclick="toggleListComplete('${l.id}', ${isDone}, event)"></div><span class="${textClass}">📋 ${l.name}</span></div>`;
-        }).join('');
-        document.getElementById('category-list').innerHTML = html;
-    }
-
-    function renderTasks(allTasks) {
-        const escapeSingleQuotes = (value) => String(value ?? '').replace(/'/g, "\\'");
-        document.getElementById('main-task-container').innerHTML = allTasks.map(t => {
-            const isDone = t.is_completed === true;
-            const checkClass = isDone ? 'circle-check completed' : 'circle-check';
-            const textClass = isDone ? 'strikethrough' : '';
-            const safeText = escapeSingleQuotes(t.task_text);
-            return `<div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="${checkClass}" onclick="toggleTaskComplete('${t.id}', ${isDone}, event)"></div><div class="editable-content ${textClass}" contenteditable="true" onblur="updateTaskText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${safeText}')"> > </div></div>`;
-        }).join('');
     }
 
     // --- DETAILS ---
@@ -880,45 +856,6 @@
         }
 
         await refreshRecursiveSteps();
-    }
-
-    async function toggleTaskComplete(id, currentStatus, event) {
-        if (event) event.stopPropagation();
-        const newStatus = !currentStatus;
-        const { error } = await _supabase
-            .from('tasks')
-            .update({ is_completed: newStatus })
-            .eq('id', id);
-
-        if (error) {
-            console.error('Supabase Update Error:', error);
-            alert('Failed to update task status. Check console.');
-            return;
-        }
-
-        await refreshTasks();
-    }
-
-    async function toggleListComplete(id, currentStatus, event) {
-        if (event) event.stopPropagation();
-        const newStatus = !currentStatus;
-        const { error } = await _supabase
-            .from('lists')
-            .update({ is_completed: newStatus })
-            .eq('id', id);
-
-        if (error) {
-            console.error('Supabase Update Error:', error);
-            alert('Failed to update list status. Check console.');
-            return;
-        }
-
-        await refreshCategories();
-    }
-
-    async function updateTaskText(id, el) {
-        if (!id) return;
-        await _supabase.from('tasks').update({ task_text: el.innerText }).eq('id', id);
     }
 </script>
 </body>
