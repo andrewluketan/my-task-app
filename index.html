@@ -843,29 +843,20 @@
     window.onclick = () => { if(repeatDropdown) repeatDropdown.style.display = 'none'; };
 
     async function toggleComplete(id, currentStatus) {
-    // 1. Calculate the new status
-    const newStatus = !currentStatus;
-    
-    // 2. Update Supabase
-    // Note: Ensure your table name is 'tasks'. If it's 'task_files' or something else, change it below.
-    const { error } = await supabase
-        .from('tasks') 
-        .update({ is_completed: newStatus })
-        .eq('id', id);
+        const newStatus = !currentStatus;
+        const { error } = await _supabase
+            .from('subtasks')
+            .update({ is_completed: newStatus })
+            .eq('id', id);
 
-    if (error) {
-        console.error("Supabase Update Error:", error);
-        alert("Failed to update status. Check console.");
-    } else {
-        // 3. Success! Reload the data to show the green circle and strike-through
-        // This must match the function you use to load your tasks (usually fetchAndRenderData)
-        if (typeof fetchAndRenderData === 'function') {
-            fetchAndRenderData();
-        } else {
-            location.reload(); // Fallback: refresh the whole page if the function name is different
+        if (error) {
+            console.error('Supabase Update Error:', error);
+            alert('Failed to update step status. Check console.');
+            return;
         }
+
+        await refreshRecursiveSteps();
     }
-}
 </script>
 </body>
 </html>
