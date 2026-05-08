@@ -586,7 +586,12 @@
     async function refreshCategories() {
         const { data } = await _supabase.from('categories').select('*').order('created_at', { ascending: true });
         let html = `<div class="sidebar-item my-day-folder" id="my-day-btn" onclick="selectCategory('my-day', '☀️ My Day')">📋 My Day</div><div style="border-bottom: 1px solid var(--border); margin: 0 10px;"></div>`;
-        html += data.map(c => `<div class="sidebar-item" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">📋 ${c.name}</div>`).join('');
+        html += data.map(c => {
+            const isDone = c.is_completed === true;
+            const checkClass = isDone ? 'circle-check completed' : 'circle-check';
+            const textClass = isDone ? 'strikethrough' : '';
+            return `<div class="sidebar-item" style="display:flex; align-items:center; gap:10px;" onclick="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')"><div class="${checkClass}" onclick="toggleListComplete('${c.id}', ${isDone}, event)"></div><span class="${textClass}">📋 ${c.name}</span></div>`;
+        }).join('');
         document.getElementById('category-list').innerHTML = html;
     }
 
@@ -612,8 +617,12 @@
         const { data, error } = await q.order('position', { ascending: true });
         if (error) { console.error("Fetch Error:", error); return; }
 
-        document.getElementById('main-task-container').innerHTML = data.map(t => `
-            <div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="editable-content" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div></div>`).join('');
+        document.getElementById('main-task-container').innerHTML = data.map(t => {
+            const isDone = t.is_completed === true;
+            const checkClass = isDone ? 'circle-check completed' : 'circle-check';
+            const textClass = isDone ? 'strikethrough' : '';
+            return `<div class="task-row" data-id="${t.id}"><div class="drag-handle">⋮⋮</div><div class="${checkClass}" onclick="toggleTaskComplete('${t.id}', ${isDone}, event)"></div><div class="editable-content ${textClass}" contenteditable="true" onblur="updateText(${t.id}, this)">${t.task_text}</div><div class="red-arrow" onclick="openDetails(${t.id}, '${t.task_text.replace(/'/g, "\\'")}')"> > </div></div>`;
+        }).join('');
         
         Sortable.create(document.getElementById('main-task-container'), { handle: '.drag-handle', animation: 200, onEnd: syncPositions });
     }
@@ -858,6 +867,40 @@
         }
 
         await refreshRecursiveSteps();
+    }
+
+    async function toggleTaskComplete(id, currentStatus, event) {
+        if (event) event.stopPropagation();
+        const newStatus = !currentStatus;
+        const { error } = await _supabase
+            .from('tasks')
+            .update({ is_completed: newStatus })
+            .eq('id', id);
+
+        if (error) {
+            console.error('Supabase Update Error:', error);
+            alert('Failed to update task status. Check console.');
+            return;
+        }
+
+        await refreshTasks();
+    }
+
+    async function toggleListComplete(id, currentStatus, event) {
+        if (event) event.stopPropagation();
+        const newStatus = !currentStatus;
+        const { error } = await _supabase
+            .from('categories')
+            .update({ is_completed: newStatus })
+            .eq('id', id);
+
+        if (error) {
+            console.error('Supabase Update Error:', error);
+            alert('Failed to update list status. Check console.');
+            return;
+        }
+
+        await refreshCategories();
     }
 </script>
 </body>
